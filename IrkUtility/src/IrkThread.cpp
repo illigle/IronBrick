@@ -177,6 +177,8 @@ int OSThread::launch()
 {
     static_assert( sizeof(void*) >= sizeof(pthread_t) && alignof(void*) >= alignof(pthread_t), "" );
     assert( !m_hThread );
+
+    m_evExited.reset();
     int errc = ::pthread_create( (pthread_t*)&m_hThread, NULL, &thread_routine, this );
     if( errc != 0 )
         m_hThread = NULL;

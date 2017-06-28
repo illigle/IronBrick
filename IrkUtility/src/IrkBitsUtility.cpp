@@ -21,13 +21,11 @@ namespace irk {
 uint8_t BitsReader::read_ue8()
 {
     // read at least 24 bits
-    uint32_t data = BE_READ32( m_pCur );
-    data <<= m_Offset;
+    uint32_t data = BE_READ32( m_pCur ) << m_Offset;
 
-    // find MSB
-    int msbi = msb_index( data );
-    if( msbi >= 24 )
+    if( data & 0xFF000000 )
     {
+        int msbi = msb_index_unzero( data );    // find MSB
         data >>= (msbi + msbi) - 31;
         m_Offset += 63 - (msbi + msbi);
         m_pCur += m_Offset >> 3;
@@ -42,14 +40,11 @@ uint8_t BitsReader::read_ue8()
 // order 0 unsigned exp golomb code in range [0,65534], return 65535 if out of range
 uint16_t BitsReader::read_ue16()
 {
-    // read 32 bits
-    uint32_t data = BE_READ32( m_pCur );
-    data = (data << m_Offset) | (m_pCur[4] >> (8 - m_Offset));
+    uint32_t data = this->peek32();
 
-    // find MSB
-    int msbi = msb_index( data );
-    if( msbi >= 16 )
+    if( data & 0xFFFF0000 )
     {
+        int msbi = msb_index_unzero( data );    // find MSB
         data >>= (msbi + msbi) - 31;
         m_Offset += 63 - (msbi + msbi);
         m_pCur += m_Offset >> 3;
@@ -65,14 +60,11 @@ uint16_t BitsReader::read_ue16()
 uint32_t BitsReader::read_ue32()
 {
     // read 32 bits
-    uint32_t data = BE_READ32( m_pCur );
-    data = (data << m_Offset) | (m_pCur[4] >> (8 - m_Offset));
-
-    // find MSB
-    const int msbi = msb_index( data );
-    if( msbi < 0 )
+    uint32_t data = this->peek32();
+    if( data == 0 )
         return UINT32_MAX;  // return invalid value if out of range
 
+    int msbi = msb_index_unzero( data );
     if( msbi >= 16 )        // in the 32 read bits
     {
         data >>= msbi + msbi - 31;
@@ -174,14 +166,14 @@ void BitsWriter::write_ue( uint32_t value )
     }
     else if( value < 65535 )    // bit count < 32
     {
-        int msbi = msb_index( value + 1 );
+        int msbi = msb_index_unzero( value + 1 );
         assert( msbi > 0 && msbi < 16 );
         this->write_bits( value + 1, 2 * msbi + 1 );
     }
     else
     {
-        int msbi = msb_index( value + 1 );
-        assert( msbi >= 16 );
+        int msbi = msb_index_unzero( value + 1 );
+        assert( msbi >= 16 && msbi <= 31 );
         m_BitCnt += 2 * msbi - 31;      // write zeros
         this->write_bits( value + 1, 32 );
     }
@@ -209,14 +201,14 @@ void BitsWriter::write_se( int32_t value )
 
         if( code < 65535 )                  // bit count < 32
         {
-            int msbi = msb_index( code );
+            int msbi = msb_index_unzero( code );
             assert( msbi > 0 && msbi < 16 );
             this->write_bits( code, 2 * msbi + 1 );
         }
         else
         {
-            int msbi = msb_index( code );
-            assert( msbi >= 16 );
+            int msbi = msb_index_unzero( code );
+            assert( msbi >= 16 && msbi <= 31 );
             m_BitCnt += 2 * msbi - 31;      // write zeros
             this->write_bits( code, 32 );
         }

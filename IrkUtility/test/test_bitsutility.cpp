@@ -31,8 +31,8 @@ TEST( BitsUtility, Bits )
         EXPECT_EQ( (1u << k), val );
     }
 
-    EXPECT_EQ( -1, msb_index(0u) );
-    EXPECT_EQ( -1, lsb_index(0u) );
+    EXPECT_EQ( 32, msb_index(0u) );
+    EXPECT_EQ( 32, lsb_index(0u) );
     EXPECT_EQ( 31, msb_index(0xffffffff) );
     EXPECT_EQ( 0, lsb_index(0xffffffff) );
     EXPECT_EQ( 1, bit_mincnt(0u) );
@@ -43,6 +43,8 @@ TEST( BitsUtility, Bits )
         uint32_t val = 1u << k;
         EXPECT_EQ( k, msb_index(val) );
         EXPECT_EQ( k, lsb_index(val) );
+        EXPECT_EQ( k, msb_index_unzero(val) );
+        EXPECT_EQ( k, lsb_index_unzero(val) );
         EXPECT_EQ( k + 1, bit_mincnt(val) );
     }
 
@@ -86,8 +88,8 @@ TEST( BitsUtility, Bits )
         EXPECT_EQ( (1ull << k), val );
     }
     
-    EXPECT_EQ( -1, msb_index(UINT64_C(0)) );
-    EXPECT_EQ( -1, lsb_index(UINT64_C(0)) );
+    EXPECT_EQ( 64, msb_index(UINT64_C(0)) );
+    EXPECT_EQ( 64, lsb_index(UINT64_C(0)) );
     EXPECT_EQ( 63, msb_index(UINT64_C(0xffffffffffffffff)) );
     EXPECT_EQ( 0, lsb_index(UINT64_C(0xffffffffffffffff)) );
     EXPECT_EQ( 1, bit_mincnt(UINT64_C(0)) );
@@ -98,6 +100,8 @@ TEST( BitsUtility, Bits )
         uint64_t val = 1ull << k;
         EXPECT_EQ( k, msb_index(val) );
         EXPECT_EQ( k, lsb_index(val) );
+        EXPECT_EQ( k, msb_index_unzero(val) );
+        EXPECT_EQ( k, lsb_index_unzero(val) );
         EXPECT_EQ( k + 1, bit_mincnt(val) );
     }
 
@@ -137,7 +141,7 @@ TEST( BitsUtility, Reader )
     reader.make_byte_aligned();
     EXPECT_EQ( 32, reader.offset() );
 
-    EXPECT_EQ( BE_READ32(buf+4), reader.read_bits_long(32) );
+    EXPECT_EQ( BE_READ32(buf+4), reader.read_long_bits(32) );
     EXPECT_EQ( BE_READ32(buf+8), reader.read32() );
     reader.skip_bits( 1 );
     EXPECT_EQ( (buf[12] >> 4) & 0x7, reader.read_bits(3) );

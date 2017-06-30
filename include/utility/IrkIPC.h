@@ -31,13 +31,14 @@ struct IpcResult
         Status_timeout,
         Status_failed,
     };
-    explicit operator bool() const      { return this->status == Status_ok; }   // succeeded
-    bool operator!() const              { return this->status != Status_ok; }
-    bool is_timeout() const             { return this->status == Status_timeout; }
 
-    static IpcResult ok()               { return {Status_ok, 0}; }
-    static IpcResult timeout( int ec )  { return {Status_timeout, ec}; }
-    static IpcResult fail( int ec )     { return {Status_failed, ec}; }
+    explicit operator bool() const  { return this->status == Status_ok; }   // succeeded
+    bool is_ok() const              { return this->status == Status_ok; }
+    bool is_timeout() const         { return this->status == Status_timeout; }
+
+    static IpcResult make_ok()              { return {Status_ok, 0}; }
+    static IpcResult make_timeout( int ec ) { return {Status_timeout, ec}; }
+    static IpcResult make_failed( int ec )  { return {Status_failed, ec}; }
 };
 
 // Named semaphore

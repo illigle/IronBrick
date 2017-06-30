@@ -58,16 +58,16 @@ IpcResult Semaphore::create( const char* semaName, int initVal )
     HANDLE hSema = ::CreateSemaphoreA( NULL, initVal, INT32_MAX, semaName );
     if( !hSema )
     {
-        return IpcResult::fail( ::GetLastError() );
+        return IpcResult::make_failed( ::GetLastError() );
     }
     else if( GetLastError() == ERROR_ALREADY_EXISTS )
     {
         ::CloseHandle( hSema );
-        return IpcResult::fail( ERROR_ALREADY_EXISTS );
+        return IpcResult::make_failed( ERROR_ALREADY_EXISTS );
     }
 
     m_Handle = hSema;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 // open an existing semaphore
@@ -77,9 +77,9 @@ IpcResult Semaphore::open( const char* semaName )
 
     m_Handle = ::OpenSemaphoreA( SEMAPHORE_MODIFY_STATE | SYNCHRONIZE, FALSE, semaName );
     if( m_Handle )
-        return IpcResult::ok();
+        return IpcResult::make_ok();
 
-    return IpcResult::fail( ::GetLastError() );
+    return IpcResult::make_failed( ::GetLastError() );
 }
 
 // close semaphore
@@ -96,12 +96,12 @@ void Semaphore::close()
 IpcResult Semaphore::post()
 {
     if( !m_Handle )
-        return IpcResult::fail( ERROR_INVALID_HANDLE );
+        return IpcResult::make_failed( ERROR_INVALID_HANDLE );
 
     if( ::ReleaseSemaphore( m_Handle, 1, NULL ) )
-        return IpcResult::ok();
+        return IpcResult::make_ok();
 
-    return IpcResult::fail( ::GetLastError() );
+    return IpcResult::make_failed( ::GetLastError() );
 }
 
 // wait semaphore posted
@@ -109,22 +109,22 @@ IpcResult Semaphore::wait( int milliseconds )
 {
     if( !m_Handle )
     {
-        return IpcResult::fail( ERROR_INVALID_HANDLE );
+        return IpcResult::make_failed( ERROR_INVALID_HANDLE );
     }
 
     DWORD timeout = milliseconds >= 0 ? milliseconds : INFINITE;
     DWORD rst = ::WaitForSingleObject( m_Handle, timeout );
     if( rst == WAIT_OBJECT_0 )
     {
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
     else if( rst == WAIT_TIMEOUT )
     {
-        return IpcResult::timeout( ERROR_TIMEOUT );
+        return IpcResult::make_timeout( ERROR_TIMEOUT );
     }
     else
     {
-        return IpcResult::fail( ::GetLastError() );
+        return IpcResult::make_failed( ::GetLastError() );
     }
 }
 
@@ -158,16 +158,16 @@ IpcResult IpcShmObj::create( const char* shmName, size_t size )
         llsize.HighPart, llsize.LowPart, shmName );
     if( !hShm )
     {
-        return IpcResult::fail( ::GetLastError() );
+        return IpcResult::make_failed( ::GetLastError() );
     }
     else if( ::GetLastError() == ERROR_ALREADY_EXISTS )
     {
         ::CloseHandle( hShm );
-        return IpcResult::fail( ERROR_ALREADY_EXISTS );
+        return IpcResult::make_failed( ERROR_ALREADY_EXISTS );
     }
 
     m_handle = hShm;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 // open existing shared memory object
@@ -176,10 +176,10 @@ IpcResult IpcShmObj::open( const char* shmName )
     assert( !m_handle );
     HANDLE hShm = ::OpenFileMappingA( FILE_MAP_READ | FILE_MAP_WRITE, FALSE, shmName );
     if( !hShm )
-        return IpcResult::fail( ::GetLastError() );
+        return IpcResult::make_failed( ::GetLastError() );
 
     m_handle = hShm;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 // close/unlink shared memory object
@@ -197,7 +197,7 @@ IpcResult IpcShmObj::map( size_t offset, size_t size, void** outPtr )
     if( !m_handle )
     {
         *outPtr = nullptr;
-        return IpcResult::fail( ERROR_INVALID_HANDLE );
+        return IpcResult::make_failed( ERROR_INVALID_HANDLE );
     }
 
     LARGE_INTEGER lloff;
@@ -206,11 +206,11 @@ IpcResult IpcShmObj::map( size_t offset, size_t size, void** outPtr )
     if( pbuf )
     {
         *outPtr = pbuf;
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
 
     *outPtr = nullptr;
-    return IpcResult::fail( ::GetLastError() );
+    return IpcResult::make_failed( ::GetLastError() );
 }
 
 IpcResult IpcShmObj::unmap( void* buf, size_t )
@@ -218,9 +218,9 @@ IpcResult IpcShmObj::unmap( void* buf, size_t )
     assert( m_handle && buf );
 
     if( ::UnmapViewOfFile( buf ) )
-        return IpcResult::ok();
+        return IpcResult::make_ok();
 
-    return IpcResult::fail( ::GetLastError() );
+    return IpcResult::make_failed( ::GetLastError() );
 }
 
 //======================================================================================================================
@@ -267,11 +267,11 @@ static IpcResult wait_aio_result( HANDLE hdl, OVERLAPPED& ovlp, int milliseconds
         if( ::GetOverlappedResult( hdl, &ovlp, &aioSize, TRUE ) )
         {
             result = (int)aioSize;
-            return IpcResult::ok();
+            return IpcResult::make_ok();
         }
         else
         {
-            return IpcResult::fail( ::GetLastError() );
+            return IpcResult::make_failed( ::GetLastError() );
         }
     }
     else
@@ -282,15 +282,15 @@ static IpcResult wait_aio_result( HANDLE hdl, OVERLAPPED& ovlp, int milliseconds
         if( ::GetOverlappedResult( hdl, &ovlp, &aioSize, FALSE ) )
         {
             result = (int)aioSize;
-            return IpcResult::ok();
+            return IpcResult::make_ok();
         }
         else
         {
             int errc = ::GetLastError();
             if( errc == ERROR_IO_INCOMPLETE )   // still in progress
-                return IpcResult::timeout( errc );
+                return IpcResult::make_timeout( errc );
             else
-                return IpcResult::fail( errc );
+                return IpcResult::make_failed( errc );
         }
     }
 }
@@ -301,26 +301,26 @@ static IpcResult pipe_accept( HANDLE hPipe, WinAioCtx& aioCtx, int milliseconds 
     int errc = aioCtx.prepare(); 
     if( errc != 0 )
     {
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
     }
 
     if( ::ConnectNamedPipe( hPipe, &aioCtx ) )
     {
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
 
     errc = ::GetLastError();
     if( errc == ERROR_PIPE_CONNECTED )  // client alreay connected
     {
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
     else if( errc == ERROR_IO_PENDING )
     {
         int dummy = 0;
         if( wait_aio_result( hPipe, aioCtx, milliseconds, dummy ) )
-            return IpcResult::ok();
+            return IpcResult::make_ok();
     }
-    return IpcResult::fail( errc );
+    return IpcResult::make_failed( errc );
 }
 
 // connect to pipe server
@@ -339,21 +339,21 @@ static HANDLE pipe_connect( const char* pipeName, int milliseconds, IpcResult& r
             NULL );
         if( hPipe != INVALID_HANDLE_VALUE ) // succeeded
         {
-            rst = IpcResult::ok();
+            rst = IpcResult::make_ok();
             return hPipe;
         }
 
         int errc = ::GetLastError();
         if( errc != ERROR_PIPE_BUSY )
         {
-            rst = IpcResult::fail( errc );
+            rst = IpcResult::make_failed( errc );
             break;
         }
         else
         {
             if( milliseconds == 0 )
             {
-                rst = IpcResult::timeout( ERROR_TIMEOUT );
+                rst = IpcResult::make_timeout( ERROR_TIMEOUT );
                 break;
             }
             DWORD timeout = milliseconds > 0 ? milliseconds : NMPWAIT_WAIT_FOREVER;
@@ -371,18 +371,18 @@ static IpcResult pipe_read( HANDLE hPipe, WinAioCtx& aioCtx,
 {
     int errc = aioCtx.prepare();
     if( errc != 0 )
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
 
     DWORD rdSize = 0;
     if( ::ReadFile( hPipe, buf, size, &rdSize, &aioCtx ) )
     {
         gotten = (int)rdSize;
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
 
     errc = ::GetLastError();
     if( errc != ERROR_IO_PENDING )
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
 
     return wait_aio_result( hPipe, aioCtx, milliseconds, gotten );
 }
@@ -393,18 +393,18 @@ static IpcResult pipe_write( HANDLE hPipe, WinAioCtx& aioCtx,
 {
     int errc = aioCtx.prepare();
     if( errc != 0 )
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
 
     DWORD wtSize = 0;
     if( ::WriteFile( hPipe, data, size, &wtSize, &aioCtx ) )
     {
         written = (int)wtSize;
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
 
     errc = ::GetLastError();
     if( errc != ERROR_IO_PENDING )
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
 
     return wait_aio_result( hPipe, aioCtx, milliseconds, written );
 }
@@ -480,9 +480,9 @@ IpcResult ImpMqServer::create( const char* mqName, int maxMsgSize, int maxMsgNum
         3000,   // default timeout
         NULL );
     if( m_hPipe == INVALID_HANDLE_VALUE )
-        return IpcResult::fail( ::GetLastError() );
+        return IpcResult::make_failed( ::GetLastError() );
 
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 void ImpMqServer::close()
@@ -506,11 +506,11 @@ IpcResult ImpMqServer::wait_connected( int milliseconds )
 {
     if( m_hPipe == INVALID_HANDLE_VALUE )   // pipe not created
     {
-        return IpcResult::fail( ERROR_INVALID_HANDLE );
+        return IpcResult::make_failed( ERROR_INVALID_HANDLE );
     }
     if( m_bConnected )  // someone already connected
     {
-        return IpcResult::fail( ERROR_PIPE_CONNECTED );
+        return IpcResult::make_failed( ERROR_PIPE_CONNECTED );
     }
 
     IpcResult rst = pipe_accept( m_hPipe, m_connCtx, milliseconds );
@@ -518,7 +518,7 @@ IpcResult ImpMqServer::wait_connected( int milliseconds )
         return rst;
 
     m_bConnected = true;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 // disconnect current client
@@ -535,7 +535,7 @@ void ImpMqServer::disconnect()
 IpcResult ImpMqServer::recv( void* buf, int bufSize, int& gotten, int milliseconds )
 {
     if( !m_bConnected )             // pipe not connected
-        return IpcResult::fail( ERROR_PIPE_NOT_CONNECTED );
+        return IpcResult::make_failed( ERROR_PIPE_NOT_CONNECTED );
 
     return pipe_read( m_hPipe, m_recvCtx, buf, bufSize, gotten, milliseconds );
 }
@@ -543,10 +543,10 @@ IpcResult ImpMqServer::recv( void* buf, int bufSize, int& gotten, int millisecon
 IpcResult ImpMqServer::send( const void* ack, int ackSize, int milliseconds )
 {
     if( !m_bConnected )             // pipe not connected
-        return IpcResult::fail( ERROR_PIPE_NOT_CONNECTED );
+        return IpcResult::make_failed( ERROR_PIPE_NOT_CONNECTED );
 
     if( ackSize > m_maxMsgSize )    // invalid message size
-        return IpcResult::fail( ERROR_INVALID_PARAMETER );
+        return IpcResult::make_failed( ERROR_INVALID_PARAMETER );
 
     int sent = 0;
     return pipe_write( m_hPipe, m_sendCtx, ack, ackSize, sent, milliseconds );
@@ -609,12 +609,12 @@ IpcResult ImpMqClient::connect( const char* mqName, int milliseconds )
     {
         int errc = ::GetLastError();
         ::CloseHandle( hPipe );
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
     }
 
     // all done
     m_hPipe = hPipe;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 // disconnect
@@ -632,7 +632,7 @@ void ImpMqClient::disconnect()
 IpcResult ImpMqClient::send( const void* req, int reqSize, int milliseconds )
 {
     if( m_hPipe == INVALID_HANDLE_VALUE )   // pipe not connected
-        return IpcResult::fail( ERROR_PIPE_NOT_CONNECTED );
+        return IpcResult::make_failed( ERROR_PIPE_NOT_CONNECTED );
 
     int sent = 0;
     return pipe_write( m_hPipe, m_sendCtx, req, reqSize, sent, milliseconds );
@@ -642,7 +642,7 @@ IpcResult ImpMqClient::send( const void* req, int reqSize, int milliseconds )
 IpcResult ImpMqClient::recv( void* buf, int bufSize, int& gotten, int milliseconds )
 {
     if( m_hPipe == INVALID_HANDLE_VALUE )   // pipe not connected
-        return IpcResult::fail( ERROR_PIPE_NOT_CONNECTED );
+        return IpcResult::make_failed( ERROR_PIPE_NOT_CONNECTED );
 
     return pipe_read( m_hPipe, m_recvCtx, buf, bufSize, gotten, milliseconds );
 }
@@ -652,22 +652,22 @@ IpcResult ImpMqClient::transact( const void* req, int reqSize, void* ackBuf, int
                                     int& gotten, int milliseconds )
 {
     if( m_hPipe == INVALID_HANDLE_VALUE )   // pipe not connected
-        return IpcResult::fail( ERROR_PIPE_NOT_CONNECTED );
+        return IpcResult::make_failed( ERROR_PIPE_NOT_CONNECTED );
 
     int errc = m_tranCtx.prepare();
     if( errc != 0 )
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
 
     DWORD ackRet = 0;
     if( ::TransactNamedPipe( m_hPipe, (void*)req, reqSize, ackBuf, ackBufSize, &ackRet, &m_tranCtx ) )
     {
         gotten = (int)ackRet;
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
 
     errc = ::GetLastError();
     if( errc != ERROR_IO_PENDING )
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
 
     return wait_aio_result( m_hPipe, m_tranCtx, milliseconds, gotten );
 }
@@ -740,9 +740,9 @@ IpcResult ImpPipeServer::create( const char* pipeName, int txBufSize )
         3000,   // default timeout
         NULL );
     if( m_hPipe == INVALID_HANDLE_VALUE )
-        return IpcResult::fail( ::GetLastError() );
+        return IpcResult::make_failed( ::GetLastError() );
 
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 void ImpPipeServer::close()
@@ -765,11 +765,11 @@ IpcResult ImpPipeServer::wait_connected( int milliseconds )
 {
     if( m_hPipe == INVALID_HANDLE_VALUE )   // pipe not created
     {
-        return IpcResult::fail( ERROR_INVALID_HANDLE );
+        return IpcResult::make_failed( ERROR_INVALID_HANDLE );
     }
     if( m_bConnected )  // someone already connected
     {
-        return IpcResult::fail( ERROR_PIPE_CONNECTED );
+        return IpcResult::make_failed( ERROR_PIPE_CONNECTED );
     }
 
     IpcResult rst = pipe_accept( m_hPipe, m_connCtx, milliseconds );
@@ -777,7 +777,7 @@ IpcResult ImpPipeServer::wait_connected( int milliseconds )
         return rst;
 
     m_bConnected = true;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 void ImpPipeServer::disconnect()
@@ -793,7 +793,7 @@ void ImpPipeServer::disconnect()
 IpcResult ImpPipeServer::recv( void* buf, int bufSize, int& gotten, int milliseconds )
 {
     if( !m_bConnected )     // pipe not connected
-        return IpcResult::fail( ERROR_PIPE_NOT_CONNECTED );
+        return IpcResult::make_failed( ERROR_PIPE_NOT_CONNECTED );
 
     return pipe_read( m_hPipe, m_recvCtx, buf, bufSize, gotten, milliseconds );
 }
@@ -801,7 +801,7 @@ IpcResult ImpPipeServer::recv( void* buf, int bufSize, int& gotten, int millisec
 IpcResult ImpPipeServer::send( const void* ack, int ackSize, int milliseconds )
 {
     if( !m_bConnected )     // pipe not connected
-        return IpcResult::fail( ERROR_PIPE_NOT_CONNECTED );
+        return IpcResult::make_failed( ERROR_PIPE_NOT_CONNECTED );
 
     int sent = 0;
     return pipe_write( m_hPipe, m_sendCtx, ack, ackSize, sent, milliseconds );
@@ -858,12 +858,12 @@ IpcResult ImpPipeClient::connect( const char* pipeName, int milliseconds )
     {
         int errc = ::GetLastError();
         ::CloseHandle( hPipe );
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
     }
 
     // all done
     m_hPipe = hPipe;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 void ImpPipeClient::disconnect()
@@ -879,7 +879,7 @@ void ImpPipeClient::disconnect()
 IpcResult ImpPipeClient::send( const void* req, int reqSize, int milliseconds )
 {
     if( m_hPipe == INVALID_HANDLE_VALUE )   // pipe not connected
-        return IpcResult::fail( ERROR_PIPE_NOT_CONNECTED );
+        return IpcResult::make_failed( ERROR_PIPE_NOT_CONNECTED );
 
     int sent = 0;
     return pipe_write( m_hPipe, m_sendCtx, req, reqSize, sent, milliseconds );
@@ -888,7 +888,7 @@ IpcResult ImpPipeClient::send( const void* req, int reqSize, int milliseconds )
 IpcResult ImpPipeClient::recv( void* buf, int bufSize, int& gotten, int milliseconds )
 {
     if( m_hPipe == INVALID_HANDLE_VALUE )   // pipe not connected
-        return IpcResult::fail( ERROR_PIPE_NOT_CONNECTED );
+        return IpcResult::make_failed( ERROR_PIPE_NOT_CONNECTED );
 
     return pipe_read( m_hPipe, m_recvCtx, buf, bufSize, gotten, milliseconds );
 }
@@ -955,10 +955,10 @@ public:
 
         m_pSema = ::sem_open( semaName, O_CREAT | O_EXCL, S_IRUSR | S_IWUSR, initVal );
         if( m_pSema == SEM_FAILED )
-            return IpcResult::fail( errno );
+            return IpcResult::make_failed( errno );
 
         m_Name = semaName;
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
 
     // open an existing semaphore
@@ -968,9 +968,9 @@ public:
 
         m_pSema = ::sem_open( semaName, 0 );
         if( m_pSema == SEM_FAILED )
-            return IpcResult::fail( errno );
+            return IpcResult::make_failed( errno );
 
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
 
     // close semaphore and unlink created new semaphore
@@ -992,18 +992,18 @@ public:
     IpcResult post()
     {
         if( ::sem_post( m_pSema ) == 0 )
-            return IpcResult::ok();
+            return IpcResult::make_ok();
 
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
 
     // wait semaphore posted, wait forever
     IpcResult wait()
     {
         if( ::sem_wait( m_pSema ) == 0 )
-            return IpcResult::ok();
+            return IpcResult::make_ok();
 
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
 
     // wait semaphore posted at most milliseconds
@@ -1023,7 +1023,7 @@ IpcResult PosixSema::wait_for( int milliseconds )
 {
     if( m_pSema == SEM_FAILED )
     {
-        return IpcResult::fail( EINVAL );
+        return IpcResult::make_failed( EINVAL );
     }
 
 #ifdef __MACH__
@@ -1034,7 +1034,7 @@ IpcResult PosixSema::wait_for( int milliseconds )
     {
         if( ::sem_trywait( m_pSema ) == 0 )
         {
-            return IpcResult::ok();
+            return IpcResult::make_ok();
         }
 
         if( errno == EAGAIN )       // still locked
@@ -1046,12 +1046,12 @@ IpcResult PosixSema::wait_for( int milliseconds )
             }
             else
             {
-                return IpcResult::timeout( ETIMEDOUT );
+                return IpcResult::make_timeout( ETIMEDOUT );
             }
         }
         else    // other error
         {
-            return IpcResult::fail( errno );
+            return IpcResult::make_failed( errno );
         }
     }
 #else
@@ -1060,21 +1060,21 @@ IpcResult PosixSema::wait_for( int milliseconds )
     int errc = get_abs_timeout( tmsp, milliseconds );
     if( errc )
     {
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
     }
     
     // wait until the time spec
     if( ::sem_timedwait( m_pSema, &tmsp ) == 0 )
     {
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
     else if( errno == ETIMEDOUT )
     {
-        return IpcResult::timeout( ETIMEDOUT );
+        return IpcResult::make_timeout( ETIMEDOUT );
     }
     else
     {
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
 #endif
 }
@@ -1152,7 +1152,7 @@ public:
         int shmObj = ::shm_open( shmName, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR );
         if( shmObj < 0 )
         {
-            return IpcResult::fail( errno );
+            return IpcResult::make_failed( errno );
         }
 
         // set shared memory size
@@ -1161,12 +1161,12 @@ public:
             int errc = errno;
             ::close( shmObj );
             ::shm_unlink( shmName );
-            return IpcResult::fail( errc );
+            return IpcResult::make_failed( errc );
         }
 
         m_ShmObj = shmObj;
         m_ShmObjName = shmName;
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
 
     IpcResult open( const char* shmName )
@@ -1176,10 +1176,10 @@ public:
         int shmObj = ::shm_open( shmName, O_RDWR, S_IRUSR | S_IWUSR );
         if( shmObj < 0 )
         {
-            return IpcResult::fail( errno );
+            return IpcResult::make_failed( errno );
         }
         m_ShmObj = shmObj;
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
 
     void close()
@@ -1201,17 +1201,17 @@ public:
         if( m_ShmObj < 0 )
         {
             *outPtr = nullptr;
-            return IpcResult::fail( EINVAL );
+            return IpcResult::make_failed( EINVAL );
         }
 
         void* pbuf = ::mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, m_ShmObj, (off_t)offset );
         if( pbuf != MAP_FAILED )
         {
             *outPtr = pbuf;
-            return IpcResult::ok();
+            return IpcResult::make_ok();
         }
         *outPtr = nullptr;
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
 
     IpcResult unmap( void* buf, size_t size )
@@ -1219,9 +1219,9 @@ public:
         assert( m_ShmObj >= 0 && buf != nullptr );
         if( ::munmap( buf, size ) == 0 )
         {
-            return IpcResult::ok();
+            return IpcResult::make_ok();
         }
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
 private:
     int         m_ShmObj;       // shared memory object
@@ -1276,14 +1276,14 @@ static IpcResult poll_wait_event( int fdes, int evflag, int milliseconds )
     
     int res = ::poll( pfd, 1, milliseconds );
     if( res == 0 )
-        return IpcResult::timeout( ETIMEDOUT );
+        return IpcResult::make_timeout( ETIMEDOUT );
     else if( res < 1 )
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     
     if( !(pfd[0].revents & evflag) )
-        return IpcResult::fail( ECONNRESET );
+        return IpcResult::make_failed( ECONNRESET );
     
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 #ifdef __linux__
@@ -1292,62 +1292,62 @@ static IpcResult mq_checked_send( mqd_t mqd, const void* buf, int size, int mill
 {
     if( mqd == (mqd_t)-1 )
     {
-        return IpcResult::fail( EBADF );
+        return IpcResult::make_failed( EBADF );
     }
     
     if( milliseconds < 0 )
     {
         if( ::mq_send( mqd, (const char*)buf, size, 0 ) != 0 )
-            return IpcResult::fail( errno );
+            return IpcResult::make_failed( errno );
     }
     else
     {
         struct timespec tmsp;
         int errc = get_abs_timeout( tmsp, milliseconds );
         if( errc )
-            return IpcResult::fail( errc );
+            return IpcResult::make_failed( errc );
 
         if( ::mq_timedsend( mqd, (const char*)buf, size, 0, &tmsp ) != 0 )
         {
             if( errno == ETIMEDOUT )
-                return IpcResult::timeout( ETIMEDOUT );
-            return IpcResult::fail( errno );
+                return IpcResult::make_timeout( ETIMEDOUT );
+            return IpcResult::make_failed( errno );
         }
     }
     
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 static IpcResult mq_checked_recv( mqd_t mqd, void* buf, int size, int& result, int milliseconds )
 {
     if( mqd == (mqd_t)-1 )
     {
-        return IpcResult::fail( EBADF );
+        return IpcResult::make_failed( EBADF );
     }
     
     if( milliseconds < 0 )
     {
         result = (int)::mq_receive( mqd, (char*)buf, size, NULL );
         if( result < 0 )
-            return IpcResult::fail( errno );
+            return IpcResult::make_failed( errno );
     }
     else
     {
         struct timespec tmsp;
         int errc = get_abs_timeout( tmsp, milliseconds );
         if( errc )
-            return IpcResult::fail( errc );
+            return IpcResult::make_failed( errc );
 
         result = ::mq_timedreceive( mqd, (char*)buf, size, NULL, &tmsp );
         if( result < 0 )
         {
             if( errno == ETIMEDOUT )
-                return IpcResult::timeout( ETIMEDOUT );
-            return IpcResult::fail( errno );
+                return IpcResult::make_timeout( ETIMEDOUT );
+            return IpcResult::make_failed( errno );
         }
     }
     
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 class ImpMqServer : IrkNocopy
@@ -1413,7 +1413,7 @@ IpcResult ImpMqServer::create( const char* mqName, int maxMsgSize, int maxMsgNum
     m_mqdReq = ::mq_open( reqName.c_str(), O_RDWR | O_CREAT | O_EXCL, 0644, &attr );
     if( m_mqdReq == (mqd_t)-1 )
     {
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
     
     m_mqdAck = ::mq_open( ackName.c_str(), O_RDWR | O_CREAT | O_EXCL, 0644, &attr );
@@ -1423,10 +1423,10 @@ IpcResult ImpMqServer::create( const char* mqName, int maxMsgSize, int maxMsgNum
         ::mq_close( m_mqdReq );
         m_mqdReq = (mqd_t)-1;
         ::mq_unlink( reqName.c_str() );
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
     }
     
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 void ImpMqServer::close()
@@ -1450,8 +1450,8 @@ void ImpMqServer::close()
 IpcResult ImpMqServer::wait_connected( int /*milliseconds*/ )
 {
     if( m_mqdReq != (mqd_t)-1 && m_mqdAck != (mqd_t)-1 )
-        return IpcResult::ok();
-    return IpcResult::fail( EBADF );
+        return IpcResult::make_ok();
+    return IpcResult::make_failed( EBADF );
 }
 
 IpcResult ImpMqServer::recv( void* buf, int bufSize, int& gotten, int milliseconds )
@@ -1531,10 +1531,10 @@ IpcResult ImpMqClient::connect( const char* mqName, int milliseconds )
         }
             
         if( errc != ENOENT )
-            return IpcResult::fail( errc );
+            return IpcResult::make_failed( errc );
             
         if( milliseconds == 0 )
-            return IpcResult::timeout( ETIMEDOUT );
+            return IpcResult::make_timeout( ETIMEDOUT );
         
         int timeout = 15;
         if( milliseconds > 0 )
@@ -1546,7 +1546,7 @@ IpcResult ImpMqClient::connect( const char* mqName, int milliseconds )
         ::usleep( timeout * 1000 );
     }
     
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 void ImpMqClient::disconnect()
@@ -1578,42 +1578,42 @@ IpcResult ImpMqClient::transact( const void* req, int reqSize, void* ackBuf, int
 {
     if( m_mqdReq == (mqd_t)-1 || m_mqdAck == (mqd_t)-1 )
     {
-        return IpcResult::fail( EBADF );
+        return IpcResult::make_failed( EBADF );
     }
         
     if( milliseconds < 0 )
     {
         if( ::mq_send( m_mqdReq, (const char*)req, reqSize, 0 ) != 0 )
-            return IpcResult::fail( errno );
+            return IpcResult::make_failed( errno );
         
         gotten = ::mq_receive( m_mqdAck, (char*)ackBuf, bufSize, NULL );
         if( gotten < 0 )
-            return IpcResult::fail( errno );
+            return IpcResult::make_failed( errno );
     }
     else
     {
         struct timespec tmsp;
         int errc = get_abs_timeout( tmsp, milliseconds );
         if( errc )
-            return IpcResult::fail( errc );
+            return IpcResult::make_failed( errc );
 
         if( ::mq_timedsend( m_mqdReq, (const char*)req, reqSize, 0, &tmsp ) != 0 )
         {
             if( errno == ETIMEDOUT )
-                return IpcResult::timeout( ETIMEDOUT );
-            return IpcResult::fail( errno );
+                return IpcResult::make_timeout( ETIMEDOUT );
+            return IpcResult::make_failed( errno );
         }
         
         gotten = ::mq_timedreceive( m_mqdAck, (char*)ackBuf, bufSize, NULL, &tmsp );
         if( gotten < 0 )
         {
             if( errno == ETIMEDOUT )
-                return IpcResult::timeout( ETIMEDOUT );
-            return IpcResult::fail( errno );
+                return IpcResult::make_timeout( ETIMEDOUT );
+            return IpcResult::make_failed( errno );
         }
     }
     
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 #else  // __linux__
@@ -1656,23 +1656,23 @@ IpcResult ImpMqServer::create( const char* path, int maxMsgSize, int maxMsgNum )
 {
     if( m_srvSkt != -1 )
     {
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
     
     if( ::strlen( path ) >= sizeof( sockaddr_un::sun_path ) )
     {
-        return IpcResult::fail( EINVAL );
+        return IpcResult::make_failed( EINVAL );
     }
     if( ::unlink( path ) != 0 && errno != ENOENT )
     {
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
     
     // create server socket
     int skt = ::socket( AF_UNIX, SOCK_DGRAM, 0 );
     if( skt == -1 )
     {
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
     
     // bind to the path
@@ -1684,7 +1684,7 @@ IpcResult ImpMqServer::create( const char* path, int maxMsgSize, int maxMsgNum )
     {
         int errc = errno;
         ::close( skt );
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
     }
     
     // set recv and send buffer size
@@ -1698,7 +1698,7 @@ IpcResult ImpMqServer::create( const char* path, int maxMsgSize, int maxMsgNum )
     m_srvSkt = skt;
     m_path = path;
     ::memset( &m_cliAddr, 0, sizeof(m_cliAddr) );
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 inline void ImpMqServer::close()
@@ -1719,8 +1719,8 @@ inline void ImpMqServer::close()
 inline IpcResult ImpMqServer::wait_connected( int )
 {
     if( m_srvSkt == -1 )
-        return IpcResult::fail( EBADF );
-    return IpcResult::ok();
+        return IpcResult::make_failed( EBADF );
+    return IpcResult::make_ok();
 }
 
 inline void ImpMqServer::disconnect()
@@ -1732,7 +1732,7 @@ IpcResult ImpMqServer::recv( void* buf, int bufSize, int& gotten, int millisecon
 {
     if( m_srvSkt == -1 )
     {
-        return IpcResult::fail( EBADF );
+        return IpcResult::make_failed( EBADF );
     }
     
     if( milliseconds >= 0 )
@@ -1745,18 +1745,18 @@ IpcResult ImpMqServer::recv( void* buf, int bufSize, int& gotten, int millisecon
     socklen_t addrLen = ssizeof( m_cliAddr );
     gotten = ::recvfrom( m_srvSkt, buf, bufSize, 0, (sockaddr*)&m_cliAddr, &addrLen );
     if( gotten == 0 )
-        return IpcResult::fail( ESHUTDOWN );
+        return IpcResult::make_failed( ESHUTDOWN );
     else if( gotten < 0 )
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
         
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 IpcResult ImpMqServer::send( const void* ack, int ackSize, int milliseconds )
 {
     if( m_srvSkt == -1 )
     {
-        return IpcResult::fail( EBADF );
+        return IpcResult::make_failed( EBADF );
     }
     
     if( milliseconds >= 0 )
@@ -1768,8 +1768,8 @@ IpcResult ImpMqServer::send( const void* ack, int ackSize, int milliseconds )
     
     int sent = ::sendto( m_srvSkt, ack, ackSize, 0, (const sockaddr*)&m_cliAddr, ssizeof(m_cliAddr) );
     if( sent < 0 )
-        return IpcResult::fail( errno );
-    return IpcResult::ok();
+        return IpcResult::make_failed( errno );
+    return IpcResult::make_ok();
 }
 
 class ImpMqClient : IrkNocopy
@@ -1812,14 +1812,14 @@ IpcResult ImpMqClient::connect( const char* path, int /*milliseconds*/ )
     
     if( ::strlen( path ) >= sizeof( sockaddr_un::sun_path ) )
     {
-        return IpcResult::fail( EINVAL );
+        return IpcResult::make_failed( EINVAL );
     }
     
     // create server socket
     int skt = ::socket( AF_UNIX, SOCK_DGRAM, 0 );
     if( skt == -1 )
     {
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
     
     // bind to a local temp path
@@ -1829,7 +1829,7 @@ IpcResult ImpMqClient::connect( const char* path, int /*milliseconds*/ )
     {
         int errc = errno;
         ::close( skt );
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
     }
     
     // save server address
@@ -1837,7 +1837,7 @@ IpcResult ImpMqClient::connect( const char* path, int /*milliseconds*/ )
     ::strncpy( m_srvAddr.sun_path, path, sizeof(m_srvAddr.sun_path)-1 );
     
     m_cliSkt = skt;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 void ImpMqClient::disconnect()
@@ -1862,7 +1862,7 @@ IpcResult ImpMqClient::send( const void* req, int reqSize, int milliseconds )
 {
     if( m_cliSkt == -1 )
     {
-        return IpcResult::fail( EBADF );
+        return IpcResult::make_failed( EBADF );
     }
     
     if( milliseconds >= 0 )
@@ -1874,15 +1874,15 @@ IpcResult ImpMqClient::send( const void* req, int reqSize, int milliseconds )
     
     int sent = ::sendto( m_cliSkt, req, reqSize, 0, (const sockaddr*)&m_srvAddr, ssizeof(m_srvAddr) );
     if( sent < 0 )
-        return IpcResult::fail( errno );
-    return IpcResult::ok();
+        return IpcResult::make_failed( errno );
+    return IpcResult::make_ok();
 }
 
 IpcResult ImpMqClient::recv( void* buf, int bufSize, int& gotten, int milliseconds )
 {
     if( m_cliSkt == -1 )
     {
-        return IpcResult::fail( EBADF );
+        return IpcResult::make_failed( EBADF );
     }
     
     if( milliseconds >= 0 )
@@ -1894,10 +1894,10 @@ IpcResult ImpMqClient::recv( void* buf, int bufSize, int& gotten, int millisecon
 
     gotten = ::recvfrom( m_cliSkt, buf, bufSize, 0, NULL, NULL );
     if( gotten == 0 )
-        return IpcResult::fail( ESHUTDOWN );
+        return IpcResult::make_failed( ESHUTDOWN );
     else if( gotten < 0 )
-        return IpcResult::fail( errno );
-    return IpcResult::ok();
+        return IpcResult::make_failed( errno );
+    return IpcResult::make_ok();
 }
 
 IpcResult ImpMqClient::transact( const void* req, int reqSize, void* ackBuf, int ackBufSize, 
@@ -1905,7 +1905,7 @@ IpcResult ImpMqClient::transact( const void* req, int reqSize, void* ackBuf, int
 {
     if( m_cliSkt == -1 )
     {
-        return IpcResult::fail( EBADF );
+        return IpcResult::make_failed( EBADF );
     }
     
     // send request
@@ -1917,7 +1917,7 @@ IpcResult ImpMqClient::transact( const void* req, int reqSize, void* ackBuf, int
     }     
     int sent = ::sendto( m_cliSkt, req, reqSize, 0, (const sockaddr*)&m_srvAddr, ssizeof(m_srvAddr) );
     if( sent < 0 )
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
 
     // receive ack
     if( milliseconds >= 0 )
@@ -1928,11 +1928,11 @@ IpcResult ImpMqClient::transact( const void* req, int reqSize, void* ackBuf, int
     }
     gotten = ::recvfrom( m_cliSkt, ackBuf, ackBufSize, 0, NULL, NULL );
     if( gotten == 0 )
-        return IpcResult::fail( ESHUTDOWN );
+        return IpcResult::make_failed( ESHUTDOWN );
     else if( gotten < 0 )
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
         
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 #endif  // __linux__
@@ -1976,23 +1976,23 @@ IpcResult ImpPipeServer::create( const char* path, int txBufSize )
 {
     if( m_srvSkt != -1 )
     {
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
     
     if( ::strlen( path ) >= sizeof( sockaddr_un::sun_path ) )
     {
-        return IpcResult::fail( EINVAL );
+        return IpcResult::make_failed( EINVAL );
     }
     if( ::unlink( path ) != 0 && errno != ENOENT )
     {
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
     
     // create server socket
     int skt = ::socket( AF_UNIX, SOCK_STREAM, 0 );
     if( skt == -1 )
     {
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
     
     // bind to the path
@@ -2004,7 +2004,7 @@ IpcResult ImpPipeServer::create( const char* path, int txBufSize )
     {
         int errc = errno;
         ::close( skt );
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
     }
     
     // set recv and send buffer size
@@ -2018,12 +2018,12 @@ IpcResult ImpPipeServer::create( const char* path, int txBufSize )
     {
         int errc = errno;
         ::close( skt );
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
     }
     
     m_srvSkt = skt;
     m_path = path;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 void ImpPipeServer::close()
@@ -2050,7 +2050,7 @@ IpcResult ImpPipeServer::wait_connected( int milliseconds )
 {
     if( m_cliSkt != -1 )
     {
-        return IpcResult::fail( EISCONN );
+        return IpcResult::make_failed( EISCONN );
     }
 
     if( milliseconds >= 0 )
@@ -2063,10 +2063,10 @@ IpcResult ImpPipeServer::wait_connected( int milliseconds )
     m_cliSkt = ::accept( m_srvSkt, NULL, NULL );
     if( m_cliSkt == -1 )
     {
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
     
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 void ImpPipeServer::disconnect()
@@ -2083,7 +2083,7 @@ IpcResult ImpPipeServer::recv( void* buf, int bufSize, int& gotten, int millisec
 {
     if( m_cliSkt == -1 )
     {
-        return IpcResult::fail( ENOTCONN );
+        return IpcResult::make_failed( ENOTCONN );
     }
     
     if( milliseconds >= 0 )
@@ -2095,17 +2095,17 @@ IpcResult ImpPipeServer::recv( void* buf, int bufSize, int& gotten, int millisec
     
     gotten = ::recv( m_cliSkt, buf, bufSize, 0 );
     if( gotten == 0 )
-        return IpcResult::fail( ESHUTDOWN );
+        return IpcResult::make_failed( ESHUTDOWN );
     else if( gotten < 0 )
-        return IpcResult::fail( errno );
-    return IpcResult::ok();
+        return IpcResult::make_failed( errno );
+    return IpcResult::make_ok();
 }
 
 IpcResult ImpPipeServer::send( const void* ack, int ackSize, int milliseconds )
 {
     if( m_cliSkt == -1 )
     {
-        return IpcResult::fail( ENOTCONN );
+        return IpcResult::make_failed( ENOTCONN );
     }
     
     if( milliseconds >= 0 )
@@ -2117,8 +2117,8 @@ IpcResult ImpPipeServer::send( const void* ack, int ackSize, int milliseconds )
     
     int sent = ::send( m_cliSkt, ack, ackSize, 0 );
     if( sent < 0 )
-        return IpcResult::fail( errno );
-    return IpcResult::ok();
+        return IpcResult::make_failed( errno );
+    return IpcResult::make_ok();
 }
 
 class ImpPipeClient : IrkNocopy
@@ -2153,14 +2153,14 @@ IpcResult ImpPipeClient::connect( const char* path, int /*milliseconds*/ )
     
     if( ::strlen( path ) >= sizeof( sockaddr_un::sun_path ) )
     {
-        return IpcResult::fail( EINVAL );
+        return IpcResult::make_failed( EINVAL );
     }
     
     // create server socket
     int skt = ::socket( AF_UNIX, SOCK_STREAM, 0 );
     if( skt == -1 )
     {
-        return IpcResult::fail( errno );
+        return IpcResult::make_failed( errno );
     }
     
     // connect to the server
@@ -2172,11 +2172,11 @@ IpcResult ImpPipeClient::connect( const char* path, int /*milliseconds*/ )
     {
         int errc = errno;
         ::close( skt );
-        return IpcResult::fail( errc );
+        return IpcResult::make_failed( errc );
     }
     
     m_connSkt = skt;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 void ImpPipeClient::disconnect()
@@ -2193,7 +2193,7 @@ IpcResult ImpPipeClient::send( const void* req, int reqSize, int milliseconds )
 {
     if( m_connSkt == -1 )
     {
-        return IpcResult::fail( ENOTCONN );
+        return IpcResult::make_failed( ENOTCONN );
     }
     
     if( milliseconds >= 0 )
@@ -2205,15 +2205,15 @@ IpcResult ImpPipeClient::send( const void* req, int reqSize, int milliseconds )
     
     int sent = ::send( m_connSkt, req, reqSize, 0 );
     if( sent < 0 )
-        return IpcResult::fail( errno );
-    return IpcResult::ok();
+        return IpcResult::make_failed( errno );
+    return IpcResult::make_ok();
 }
 
 IpcResult ImpPipeClient::recv( void* buf, int bufSize, int& gotten, int milliseconds )
 {
     if( m_connSkt == -1 )
     {
-        return IpcResult::fail( ENOTCONN );
+        return IpcResult::make_failed( ENOTCONN );
     }
     
     if( milliseconds >= 0 )
@@ -2225,10 +2225,10 @@ IpcResult ImpPipeClient::recv( void* buf, int bufSize, int& gotten, int millisec
     
     gotten = ::recv( m_connSkt, buf, bufSize, 0 );
     if( gotten == 0 )
-        return IpcResult::fail( ESHUTDOWN );
+        return IpcResult::make_failed( ESHUTDOWN );
     else if( gotten < 0 )
-        return IpcResult::fail( errno );
-    return IpcResult::ok();
+        return IpcResult::make_failed( errno );
+    return IpcResult::make_ok();
 }
 
 #endif  // Posix
@@ -2350,7 +2350,7 @@ IpcResult CargoQueue::create( const char* cntSemaName, const char* lockSemaName,
     m_header->rIdx = 0;
     m_header->nWaiters = 0;
     m_buff = (int*)(shmBuf + kHeaderSize);
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 IpcResult CargoQueue::open( const char* cntSemaName, const char* lockSemaName, char* shmBuf )
@@ -2364,7 +2364,7 @@ IpcResult CargoQueue::open( const char* cntSemaName, const char* lockSemaName, c
 
     m_header = (Header*)shmBuf;
     m_buff = (int*)(shmBuf + kHeaderSize);
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 void CargoQueue::shutdown()
@@ -2389,7 +2389,7 @@ IpcResult CargoQueue::push_back( int carIdx  )
 
     if( m_header->curCnt < 0 || m_header->curCnt >= m_header->maxCnt )
     {
-        return IpcResult::fail( ERROR_BROKEN_PIPE );
+        return IpcResult::make_failed( ERROR_BROKEN_PIPE );
     }
     int wIdx = (m_header->rIdx + m_header->curCnt) % m_header->maxCnt;  // write index
     m_header->curCnt += 1;
@@ -2397,7 +2397,7 @@ IpcResult CargoQueue::push_back( int carIdx  )
 
     guard_.unlock();
     m_cntSema.post();
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 IpcResult CargoQueue::pop_front( int* pCarIdx, int timeout )
@@ -2424,9 +2424,9 @@ IpcResult CargoQueue::pop_front( int* pCarIdx, int timeout )
             m_header->rIdx = 0;
         else
             m_header->rIdx = (m_header->rIdx + 1) % m_header->maxCnt;      
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
-    return IpcResult::fail( ERROR_BROKEN_PIPE );
+    return IpcResult::make_failed( ERROR_BROKEN_PIPE );
 }
 
 IpcResult CargoQueue::pop_back( int* pCarIdx, int timeout )
@@ -2450,9 +2450,9 @@ IpcResult CargoQueue::pop_back( int* pCarIdx, int timeout )
         m_header->curCnt -= 1;
         int backIdx = (m_header->rIdx + m_header->curCnt) % m_header->maxCnt;
         *pCarIdx = m_buff[backIdx];
-        return IpcResult::ok();
+        return IpcResult::make_ok();
     }
-    return IpcResult::fail( ERROR_BROKEN_PIPE );
+    return IpcResult::make_failed( ERROR_BROKEN_PIPE );
 }
 
 inline void purge_cargo( IpcCargo& cargo )
@@ -2560,7 +2560,7 @@ IpcResult ImpFrtServer::create( const char* name, int cargoSize, int cargoCnt )
     if( !rst )
         return rst;
 
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 void ImpFrtServer::shutdown()
@@ -2594,7 +2594,7 @@ void ImpFrtServer::shutdown()
 IpcResult ImpFrtServer::recv( IpcCargo& cargo, int milliseconds )
 {
     if( !m_shmBuf || *(int*)m_shmBuf != 0 ) // already shutdown
-        return IpcResult::fail( ERROR_BROKEN_PIPE );
+        return IpcResult::make_failed( ERROR_BROKEN_PIPE );
 
     WorkerTracer wtrac_( (int*)(m_shmBuf + 4) );
 
@@ -2609,13 +2609,13 @@ IpcResult ImpFrtServer::recv( IpcCargo& cargo, int milliseconds )
     cargo.size = *(int*)carShm;
     cargo.capacity = m_carSize - 16;
     cargo.opaque = carIdx;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 IpcResult ImpFrtServer::send( IpcCargo& cargo )
 {
     if( !m_shmBuf || *(int*)m_shmBuf != 0 ) // already shutdown
-        return IpcResult::fail( ERROR_BROKEN_PIPE );
+        return IpcResult::make_failed( ERROR_BROKEN_PIPE );
 
     WorkerTracer wtrac_( (int*)(m_shmBuf + 4) );
 
@@ -2629,13 +2629,13 @@ IpcResult ImpFrtServer::send( IpcCargo& cargo )
         return rst;
 
     purge_cargo( cargo );
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 IpcResult ImpFrtServer::discard( IpcCargo& cargo )
 {
     if( !m_shmBuf || *(int*)m_shmBuf != 0 ) // already shutdown
-        return IpcResult::fail( ERROR_BROKEN_PIPE );
+        return IpcResult::make_failed( ERROR_BROKEN_PIPE );
 
     WorkerTracer wtrac_( (int*)(m_shmBuf + 4) );
 
@@ -2649,7 +2649,7 @@ IpcResult ImpFrtServer::discard( IpcCargo& cargo )
         return rst;
 
     purge_cargo( cargo );
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 class ImpFrtClient : IrkNocopy
@@ -2708,7 +2708,7 @@ IpcResult ImpFrtClient::open( const char* name )
     if( !rst )
         return rst;
     if( header[0] != 0 )    // server already shutdown
-        return IpcResult::fail( ERROR_BROKEN_PIPE );
+        return IpcResult::make_failed( ERROR_BROKEN_PIPE );
     m_carSize = header[2];
     const int cargoCnt = header[3];
     const int queueSize = CargoQueue::shm_bytes( cargoCnt );
@@ -2745,7 +2745,7 @@ IpcResult ImpFrtClient::open( const char* name )
         return rst;
 
     m_shmCars = shmAckQ + queueSize;    // cargo array
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 IpcResult ImpFrtClient::create( IpcCargo& cargo )
@@ -2757,9 +2757,9 @@ IpcResult ImpFrtClient::create( IpcCargo& cargo )
         if( rst.is_timeout() )
         {
 #ifdef _WIN32
-            return IpcResult::fail( ERROR_INSUFFICIENT_BUFFER );
+            return IpcResult::make_failed( ERROR_INSUFFICIENT_BUFFER );
 #else
-            return IpcResult::fail( ENOBUFS );
+            return IpcResult::make_failed( ENOBUFS );
 #endif
         }
         return rst;
@@ -2770,7 +2770,7 @@ IpcResult ImpFrtClient::create( IpcCargo& cargo )
     cargo.size = 0;
     cargo.capacity = m_carSize - 16;
     cargo.opaque = carIdx;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 IpcResult ImpFrtClient::send( IpcCargo& cargo )
@@ -2785,7 +2785,7 @@ IpcResult ImpFrtClient::send( IpcCargo& cargo )
         return rst;
 
     purge_cargo( cargo );
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 IpcResult ImpFrtClient::recv( IpcCargo& cargo, int milliseconds )
@@ -2801,7 +2801,7 @@ IpcResult ImpFrtClient::recv( IpcCargo& cargo, int milliseconds )
     cargo.size = *(int*)carShm;
     cargo.capacity = m_carSize - 16;
     cargo.opaque = carIdx;
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 IpcResult ImpFrtClient::discard( IpcCargo& cargo )
@@ -2816,7 +2816,7 @@ IpcResult ImpFrtClient::discard( IpcCargo& cargo )
         return rst;
 
     purge_cargo( cargo );
-    return IpcResult::ok();
+    return IpcResult::make_ok();
 }
 
 IpcFreightServer::IpcFreightServer() : m_pImpl(nullptr)
@@ -2861,7 +2861,7 @@ IpcResult IpcFreightServer::recv( IpcCargo& cargo, int milliseconds )
     purge_cargo( cargo );
 
     if( !m_pImpl )
-        return IpcResult::fail( -1 );
+        return IpcResult::make_failed( -1 );
     return m_pImpl->recv( cargo, milliseconds );
 }
 
@@ -2869,7 +2869,7 @@ IpcResult IpcFreightServer::recv( IpcCargo& cargo, int milliseconds )
 IpcResult IpcFreightServer::send( IpcCargo& cargo )
 {
     if( !m_pImpl )
-        return IpcResult::fail( -1 );
+        return IpcResult::make_failed( -1 );
     return m_pImpl->send( cargo );
 }
 
@@ -2909,7 +2909,7 @@ IpcResult IpcFreightClient::create( IpcCargo& cargo )
     purge_cargo( cargo );
 
     if( !m_pImpl )
-        return IpcResult::fail( -1 );
+        return IpcResult::make_failed( -1 );
     return m_pImpl->create( cargo );
 }
 
@@ -2917,7 +2917,7 @@ IpcResult IpcFreightClient::create( IpcCargo& cargo )
 IpcResult IpcFreightClient::send( IpcCargo& cargo )
 {
     if( !m_pImpl )
-        return IpcResult::fail( -1 );
+        return IpcResult::make_failed( -1 );
     return m_pImpl->send( cargo );
 }
 
@@ -2927,7 +2927,7 @@ IpcResult IpcFreightClient::recv( IpcCargo& cargo, int milliseconds )
     purge_cargo( cargo );
 
     if( !m_pImpl )
-        return IpcResult::fail( -1 );
+        return IpcResult::make_failed( -1 );
     return m_pImpl->recv( cargo, milliseconds );
 }
 

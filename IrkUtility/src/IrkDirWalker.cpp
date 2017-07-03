@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file,
+* If a copy of the MPL was not distributed with this file, 
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an ¡°as is¡± basis,
+* Covered Software is provided on an "as is" basis, 
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable,
+* that the Covered Software is free of defects, merchantable, 
 * fit for a particular purpose or non-infringing.
-
+ 
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 

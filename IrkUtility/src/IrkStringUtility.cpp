@@ -20,8 +20,19 @@ namespace irk {
 size_t str_count( const char16_t* str )
 {
     size_t cnt = 0;
-    while( *str++ != 0 )
+    while( str[cnt] != 0 )
         cnt++;
+    return cnt;
+}
+
+size_t str_ncount( const char16_t* str, size_t maxlen )
+{
+    size_t cnt = 0;
+    while( str[cnt] != 0 )
+    {
+        if( ++cnt >= maxlen )
+            return maxlen;
+    }
     return cnt;
 }
 
@@ -41,48 +52,54 @@ size_t str_copy( char* buf, size_t size, const char* src )
     if( size == 0 ) // invalid buffer size
         return 0;
 
-    size_t idx = 0, maxIdx = size - 1;
-    for( ; idx < maxIdx; idx++ )
+    for( size_t idx = 0; idx < size; idx++ )
     {
         if( src[idx] == 0 )
-            break;
+        {
+            buf[idx] = 0;
+            return idx;
+        }
         buf[idx] = src[idx];
     }
-    buf[idx] = 0;   // always add terminal null char
 
-    return idx;
+    buf[size-1] = 0;    // always add terminal null char
+    return size;
 }
 size_t str_copy( wchar_t* buf, size_t size, const wchar_t* src )
 {
     if( size == 0 ) // invalid buffer size
         return 0;
 
-    size_t idx = 0, maxIdx = size - 1;
-    for( ; idx < maxIdx; idx++ )
+    for( size_t idx = 0; idx < size; idx++ )
     {
         if( src[idx] == 0 )
-            break;
+        {
+            buf[idx] = 0;
+            return idx;
+        }
         buf[idx] = src[idx];
     }
-    buf[idx] = 0;   // always add terminal null char
 
-    return idx;
+    buf[size-1] = 0;    // always add terminal null char
+    return size;
 }
 size_t str_copy( char16_t* buf, size_t size, const char16_t* src )
 {
     if( size == 0 ) // invalid buffer size
         return 0;
 
-    size_t idx = 0, maxIdx = size - 1;
-    for( ; idx < maxIdx; idx++ )
+    for( size_t idx = 0; idx < size; idx++ )
     {
         if( src[idx] == 0 )
-            break;
+        {
+            buf[idx] = 0;
+            return idx;
+        }
         buf[idx] = src[idx];
     }
-    buf[idx] = 0;   // always add terminal null char
 
-    return idx;
+    buf[size-1] = 0;    // always add terminal null char
+    return size;
 }
 
 // string concatenation, like strncat, but the result string will always be null terminated
@@ -91,51 +108,60 @@ size_t str_cat( char* dst, size_t size, const char* src )
     if( size == 0 ) // invalid buffer size
         return 0;
 
-    size_t srcIdx = 0, maxIdx = size - 1;
-    size_t dstIdx = ::strlen( dst );
-    while( dstIdx < maxIdx )
+    size_t srcIdx = 0;
+    size_t dstIdx = ::strnlen( dst, size );
+    while( dstIdx < size )
     {
         if( src[srcIdx] == 0 )
-            break;
+        {
+            dst[dstIdx] = 0;
+            return dstIdx;
+        }
         dst[dstIdx++] = src[srcIdx++];
     }
-    dst[dstIdx] = 0;   // always add terminal null char
 
-    return dstIdx;
+    dst[size-1] = 0;    // always add terminal null char
+    return size;
 }
 size_t str_cat( wchar_t* dst, size_t size, const wchar_t* src )
 {
     if( size == 0 ) // invalid buffer size
         return 0;
 
-    size_t srcIdx = 0, maxIdx = size - 1;
-    size_t dstIdx = ::wcslen( dst );
-    while( dstIdx < maxIdx )
+    size_t srcIdx = 0;
+    size_t dstIdx = ::wcsnlen( dst, size );
+    while( dstIdx < size )
     {
         if( src[srcIdx] == 0 )
-            break;
+        {
+            dst[dstIdx] = 0;
+            return dstIdx;
+        }
         dst[dstIdx++] = src[srcIdx++];
     }
-    dst[dstIdx] = 0;   // always add terminal null char
 
-    return dstIdx;
+    dst[size-1] = 0;    // always add terminal null char
+    return size;
 }
 size_t str_cat( char16_t* dst, size_t size, const char16_t* src )
 {
     if( size == 0 ) // invalid buffer size
         return 0;
 
-    size_t srcIdx = 0, maxIdx = size - 1;
-    size_t dstIdx = str_count( dst );
-    while( dstIdx < maxIdx )
+    size_t srcIdx = 0;
+    size_t dstIdx = str_ncount( dst, size );
+    while( dstIdx < size )
     {
         if( src[srcIdx] == 0 )
-            break;
+        {
+            dst[dstIdx] = 0;
+            return dstIdx;
+        }
         dst[dstIdx++] = src[srcIdx++];
     }
-    dst[dstIdx] = 0;   // always add terminal null char
 
-    return dstIdx;
+    dst[size-1] = 0;    // always add terminal null char
+    return size;
 }
 
 //======================================================================================================================

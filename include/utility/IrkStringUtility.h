@@ -37,7 +37,7 @@
 
 namespace irk {
 
-// character count of zero terminating string
+// strlen: return character count of null terminated string
 inline size_t str_count( const char* str )
 {
     return ::strlen( str );
@@ -47,6 +47,17 @@ inline size_t str_count( const wchar_t* str )
     return ::wcslen( str );
 }
 extern size_t str_count( const char16_t* str );
+
+// strnlen: returns character count of null terminated string but at most maxlen.
+inline size_t str_ncount( const char* str, size_t maxlen )
+{
+    return ::strnlen( str, maxlen );
+}
+inline size_t str_ncount( const wchar_t* str, size_t maxlen )
+{
+    return ::wcsnlen( str, maxlen );
+}
+extern size_t str_ncount( const char16_t* str, size_t maxlen );
 
 // string comparison, return <0, 0, >0
 inline int str_compare( const char* str1, const char* str2 )
@@ -60,15 +71,15 @@ inline int str_compare( const wchar_t* str1, const wchar_t* str2 )
 extern int str_compare( const char16_t* str1, const char16_t* str2 );
 
 // string copy, the behaviour is like c11 strncpy_s(buf, size, src, size - 1)
-// the result buf will always be null terminated
-// return actual character number copied(excluding terminal null)
+// the dest buf will always be null terminated
+// return actual character number copied(excluding terminal null), return "size" if dest buf is too small
 size_t str_copy( char* buf, size_t size, const char* src );
 size_t str_copy( wchar_t* buf, size_t size, const wchar_t* src );
 size_t str_copy( char16_t* buf, size_t size, const char16_t* src );
 
 // string concatenation, like strncat, but the result string will always be null terminated
-// [dst] shall not be NULL and shall be null terminated
-// return length of the result string(excluding terminal null)
+// "dst" shall not be NULL and shall be null terminated
+// return length of the result string(excluding terminal null), return "size" if dest buf is too small
 size_t str_cat( char* dst, size_t size, const char* src );
 size_t str_cat( wchar_t* dst, size_t size, const wchar_t* src );
 size_t str_cat( char16_t* dst, size_t size, const char16_t* src );
@@ -78,7 +89,7 @@ uint32_t str_hash( const char* str );
 uint32_t str_hash( const wchar_t* str );
 uint32_t str_hash( const char16_t* str );
 
-// hash string to [bits] bits unsigned value
+// hash string to "bits" bits unsigned value
 inline uint32_t str_hash( const char* str, uint32_t bits )
 {
     assert( bits > 1 && bits < 32 );
@@ -139,7 +150,7 @@ inline int str_format( wchar_t* buf, size_t size, const wchar_t* fmt, ... )
 
 // convert string to integer
 // return 0 if no digital character can be found
-// if radix is 16, parsed as hex number, otherwise parsed as decimal
+// if "radix" is 16, parsed as hex number, otherwise parsed as decimal
 // NOTE: if string begin with 0x or 0X, always parsed as hex number
 // WARNIG: if overflow, result is undefined
 int32_t str_to_int( const char* str, int radix = 10 );
@@ -207,7 +218,7 @@ inline uint64_t str_to_uint64( const std::u16string& str, int radix = 10 )
 // convert integer to string, support decimal and hexadecimal output format
 // return character number written(excludeing terminal null)
 // return -1 if output buffer's size is insufficient
-// NOTE: if radix is 16, output string begins with 0x
+// NOTE: if "radix" is 16, output string begins with 0x
 int int_to_str( int32_t val, char* buf,     int size, int radix = 10 );
 int int_to_str( int32_t val, wchar_t* buf,  int size, int radix = 10 );
 int int_to_str( int32_t val, char16_t* buf, int size, int radix = 10 );
@@ -261,8 +272,8 @@ extern int str_u8count( const std::string& u8str );
 extern int str_u8count( const char* u8str );
 
 // Convert UTF-16 to UTF-8
-// [size]: The max number of characters can be stored(including terminal null)
-// if [size] == 0, this function will return buffer size needed
+// "size": The max number of characters can be stored(including terminal null)
+// if "size" == 0, this function will return buffer size needed
 // return The number of UTF-8 characters written, or -1 if failed
 // may be failed if out buffer is insufficient or invalid character is encountered
 extern int str_utf16to8( const char16_t* str, char* buf, int size );
@@ -277,8 +288,8 @@ inline int str_utf16to8( const std::u16string& str, std::string& dst )
 }
 
 // Convert UTF-8 to UTF-16
-// [size]: The max number of UTF-16 characters can be stored(including terminal null)
-// if [size] == 0, this function will return buffer size needed
+// "size": The max number of UTF-16 characters can be stored(including terminal null)
+// if "size" == 0, this function will return buffer size needed
 // return The number of UTF-16 characters written, or -1 if failed
 // may be failed if out buffer is insufficient or invalid character is encountered
 extern int str_utf8to16( const char* u8str, char16_t* buf, int size );

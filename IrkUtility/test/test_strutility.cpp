@@ -20,6 +20,16 @@ TEST( StrUtility, tools )
         EXPECT_EQ( strlen(str), str_count(u8str) );
         EXPECT_EQ( strlen(str), str_count(u16str) );
         EXPECT_EQ( strlen(str), str_count(wstr) );
+
+        EXPECT_EQ( strlen(str), str_ncount(str,64) );
+        EXPECT_EQ( strlen(str), str_ncount(u8str,64) );
+        EXPECT_EQ( strlen(str), str_ncount(u16str,64) );
+        EXPECT_EQ( strlen(str), str_ncount(wstr,64) );
+
+        EXPECT_EQ( 5, str_ncount(str,5) );
+        EXPECT_EQ( 4, str_ncount(u8str,4) );
+        EXPECT_EQ( 0, str_ncount(u16str,0) );
+        EXPECT_EQ( 0, str_ncount(wstr,0) );
     }
     {
         EXPECT_EQ( 0, str_compare("","") );
@@ -51,7 +61,7 @@ TEST( StrUtility, tools )
         const char* str = "abcxyz123456";
         char buf[16];
         EXPECT_EQ(0, str_copy(buf, 0, str) );
-        EXPECT_EQ(0, str_copy(buf, 1, str) );
+        EXPECT_EQ(1, str_copy(buf, 1, str) );
         EXPECT_EQ(0, str_count(buf) );
         EXPECT_EQ(str_count(str), str_copy(buf, countof(buf), str) );
         EXPECT_EQ(str_count(str), str_count(buf) );
@@ -59,7 +69,7 @@ TEST( StrUtility, tools )
         const char16_t* ustr = u"abcxyz123456";
         char16_t ubuf[16];
         EXPECT_EQ(0, str_copy(ubuf, 0, ustr) );
-        EXPECT_EQ(0, str_copy(ubuf, 1, ustr) );
+        EXPECT_EQ(1, str_copy(ubuf, 1, ustr) );
         EXPECT_EQ(0, str_count(ubuf) );
         EXPECT_EQ(str_count(ustr), str_copy(ubuf, countof(ubuf), ustr) );
         EXPECT_EQ(str_count(ustr), str_count(ubuf) );
@@ -67,20 +77,20 @@ TEST( StrUtility, tools )
         const wchar_t* wstr = L"abcxyz123456";
         wchar_t wbuf[16];
         EXPECT_EQ(0, str_copy(wbuf, 0, wstr) );
-        EXPECT_EQ(0, str_copy(wbuf, 1, wstr) );
+        EXPECT_EQ(1, str_copy(wbuf, 1, wstr) );
         EXPECT_EQ(0, str_count(wbuf) );
         EXPECT_EQ(str_count(wstr), str_copy(wbuf, countof(wbuf), wstr) );
         EXPECT_EQ(str_count(wstr), str_count(wbuf) );
     }
     {
         char str[8] = "abcd";
-        EXPECT_EQ( 7, str_cat(str, countof(str), "123456") );
+        EXPECT_EQ( countof(str), str_cat(str, countof(str), "123456") );
         EXPECT_STREQ( str, "abcd123" );
         wchar_t wstr[8] = L"abcd";
-        EXPECT_EQ( 7, str_cat(wstr, countof(wstr), L"123456") );
+        EXPECT_EQ( countof(str), str_cat(wstr, countof(wstr), L"123456") );
         EXPECT_STREQ( wstr, L"abcd123" );
         char16_t ustr[8] = u"abcd";
-        EXPECT_EQ( 7, str_cat(ustr, countof(ustr), u"123456") );
+        EXPECT_EQ( countof(str), str_cat(ustr, countof(ustr), u"123456") );
         EXPECT_EQ( 0, ustr[7] );
     }
     {

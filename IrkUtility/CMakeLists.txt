@@ -148,7 +148,7 @@ set(TEST_FILES
 
 add_executable(${TEST_NAME} ${TEST_FILES})
 
-add_dependencies(${TEST_NAME} ${LIB_NAME} ${IPC_TEST})
+add_dependencies(${TEST_NAME} ${LIB_NAME} IPCTest)
 
 target_compile_definitions(${TEST_NAME} PRIVATE IRK_ENABLE_CONTRACTS)
 

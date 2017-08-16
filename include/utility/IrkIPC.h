@@ -22,23 +22,23 @@ namespace irk {
 
 struct IpcResult
 {
-    int status;     // ok, timeout, failed
+    int condition;  // ok, timeout, failed
     int errc;       // native system error code
 
     enum
     {
-        Status_ok = 0,       
-        Status_timeout,
-        Status_failed,
+        Ok = 0,       
+        Timeout,
+        Failed,
     };
 
-    explicit operator bool() const  { return this->status == Status_ok; }   // succeeded
-    bool is_ok() const              { return this->status == Status_ok; }
-    bool is_timeout() const         { return this->status == Status_timeout; }
+    explicit operator bool() const  { return this->condition == Ok; }   // succeeded
+    bool is_ok() const              { return this->condition == Ok; }
+    bool is_timeout() const         { return this->condition == Timeout; }
 
-    static IpcResult make_ok()              { return {Status_ok, 0}; }
-    static IpcResult make_timeout( int ec ) { return {Status_timeout, ec}; }
-    static IpcResult make_failed( int ec )  { return {Status_failed, ec}; }
+    static IpcResult make_ok()              { return {Ok, 0}; }
+    static IpcResult make_timeout( int ec ) { return {Timeout, ec}; }
+    static IpcResult make_failed( int ec )  { return {Failed, ec}; }
 };
 
 // Named semaphore

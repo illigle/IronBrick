@@ -51,7 +51,7 @@ void OSThread::sleep( int milliseconds )
 
 unsigned __stdcall OSThread::thread_routine( void* param )
 {
-    OSThread* pthrd = (OSThread*)param;
+    OSThread* pthrd = static_cast<OSThread*>(param);
     pthrd->thread_proc();
     return 0;
 }
@@ -159,7 +159,7 @@ void OSThread::sleep( int milliseconds )
 
 void* OSThread::thread_routine( void* param )
 {
-    OSThread* pthrd = (OSThread*)param;
+    OSThread* pthrd = static_cast<OSThread*>(param);
     pthrd->thread_proc();
     pthrd->m_evExited.set();    // notify thread exit
     return NULL;

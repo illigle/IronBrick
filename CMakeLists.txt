@@ -5,3 +5,5 @@ project(IronBrick)
 enable_testing()
 
 add_subdirectory(IrkUtility)
+
+add_subdirectory(IrkNetwork)

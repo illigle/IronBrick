@@ -14,11 +14,13 @@ set(INC_FILES
     ${INC_DIR}/IrkSocketError.h
     ${INC_DIR}/IrkSocket.h
     ${INC_DIR}/IrkDnsResolver.h
+    ${INC_DIR}/IrkHttpUtility.h
 )
 set(SRC_FILES 
     src/IrkIpAddress.cpp
     src/IrkURI.cpp
     src/IrkSocket.cpp
+    src/IrkHttpUtility.cpp
 )
 
 add_library(${THIS_LIB} STATIC ${INC_FILES} ${SRC_FILES})

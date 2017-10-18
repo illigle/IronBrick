@@ -112,7 +112,7 @@ IRK_AVSDEC_EXPORT void irk_destroy_avs_decoder( IrkAvsDecoder* decoder );
 
 // reset AVS+ decoder(before decoding new bitstream)
 // if "resetAll" == false, global setting such as sequece header will not be reset
-IRK_AVSDEC_EXPORT void irk_avs_decoder_reset( IrkAvsDecoder* decoder, bool resetAll = true );
+IRK_AVSDEC_EXPORT void irk_avs_decoder_reset( IrkAvsDecoder* decoder, bool resetAll );
 
 // set decoding notify callback
 // when got IRK_CODEC_DONE code, notify data point to IrkAvsDecedPic struct

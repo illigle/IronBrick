@@ -36,6 +36,7 @@ target_compile_options(${THIS_LIB} PRIVATE /GR-)
 else()
 target_compile_definitions(${THIS_LIB} PUBLIC _FILE_OFFSET_BITS=64)
 target_compile_options(${THIS_LIB} PUBLIC -std=c++14)
+target_compile_options(${THIS_LIB} PRIVATE -fPIC)
 endif()
 
 set_target_properties(${THIS_LIB} PROPERTIES DEBUG_POSTFIX "D")

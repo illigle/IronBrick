@@ -14,6 +14,9 @@
 #ifndef _IRONBRICK_SOCKET_H_
 #define _IRONBRICK_SOCKET_H_
 
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 #include "IrkIpAddress.h"
 #include "IrkSocketError.h"
 

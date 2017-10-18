@@ -146,7 +146,7 @@ static inline SockResult wait_recvable( SOCKET sockfd, int ms )
     }
     return SockResult::make_ok();
 #else
-    return poll_wait_event( sockfd, POLLIN, milliseconds );
+    return poll_wait_event( sockfd, POLLIN, ms );
 #endif
 }
 

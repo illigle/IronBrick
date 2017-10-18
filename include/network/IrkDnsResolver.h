@@ -14,6 +14,9 @@
 #ifndef _IRONBRICK_DNSRESOLVER_H_
 #define _IRONBRICK_DNSRESOLVER_H_
 
+#ifndef _WIN32
+#include <netdb.h>
+#endif
 #include "IrkIpAddress.h"
 #include "IrkSocketError.h"
 

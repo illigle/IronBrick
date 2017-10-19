@@ -15,7 +15,7 @@
 
 namespace irk_avs_dec {
 
-extern void IDCT_8x8_add_sse2( const int16_t src[64], uint8_t* dst, int dstPitch );
+extern void IDCT_8x8_add_sse4( const int16_t src[64], uint8_t* dst, int dstPitch );
 extern void IDCT_8x8_add_c( const int16_t src[64], uint8_t* dst, int dstPitch );
 
 // 标准表 42
@@ -162,7 +162,7 @@ void dec_macroblock_I8x8( FrmDecContext* ctx, int mx, int my )
             return;
         }
 
-        IDCT_8x8_add_sse2( coeff, luma, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma, lPitch );
     }
 
     // decode luma block 1
@@ -179,7 +179,7 @@ void dec_macroblock_I8x8( FrmDecContext* ctx, int mx, int my )
             return;
         }
 
-        IDCT_8x8_add_sse2( coeff, luma + 8, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma + 8, lPitch );
     }
 
     // decode luma block 2
@@ -197,7 +197,7 @@ void dec_macroblock_I8x8( FrmDecContext* ctx, int mx, int my )
             return;
         }
 
-        IDCT_8x8_add_sse2( coeff, luma, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma, lPitch );
     }
 
     // decode luma block 3
@@ -214,7 +214,7 @@ void dec_macroblock_I8x8( FrmDecContext* ctx, int mx, int my )
             return;
         }
 
-        IDCT_8x8_add_sse2( coeff, luma + 8, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma + 8, lPitch );
     }
 
     // decode Cb block
@@ -241,7 +241,7 @@ void dec_macroblock_I8x8( FrmDecContext* ctx, int mx, int my )
             return;
         }
 
-        IDCT_8x8_add_sse2( coeff, dstCb, cPitch );
+        IDCT_8x8_add_sse4( coeff, dstCb, cPitch );
     }
 
     // decode Cr block
@@ -263,7 +263,7 @@ void dec_macroblock_I8x8( FrmDecContext* ctx, int mx, int my )
             return;
         }
 
-        IDCT_8x8_add_sse2( coeff, dstCr, cPitch );
+        IDCT_8x8_add_sse4( coeff, dstCr, cPitch );
     }
 
     // 当前宏块可供右侧和下一行宏块使用
@@ -321,7 +321,7 @@ static bool dec_mb_residual( FrmDecContext* ctx, int mx, int my, uint32_t cbpFla
     {
         if( !parser->dec_inter_coeff_block( coeff, bitsm, dqScale, dqShift ) )
             return false;
-        IDCT_8x8_add_sse2( coeff, luma, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma, lPitch );
     }
 
     // decode Luma block 1
@@ -329,7 +329,7 @@ static bool dec_mb_residual( FrmDecContext* ctx, int mx, int my, uint32_t cbpFla
     {
         if( !parser->dec_inter_coeff_block( coeff, bitsm, dqScale, dqShift ) )
             return false;
-        IDCT_8x8_add_sse2( coeff, luma + 8, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma + 8, lPitch );
     }
 
     // decode Luma block 2
@@ -338,7 +338,7 @@ static bool dec_mb_residual( FrmDecContext* ctx, int mx, int my, uint32_t cbpFla
     {
         if( !parser->dec_inter_coeff_block( coeff, bitsm, dqScale, dqShift ) )
             return false;
-        IDCT_8x8_add_sse2( coeff, luma, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma, lPitch );
     }
 
     // decode Luma block 3
@@ -346,7 +346,7 @@ static bool dec_mb_residual( FrmDecContext* ctx, int mx, int my, uint32_t cbpFla
     {
         if( !parser->dec_inter_coeff_block( coeff, bitsm, dqScale, dqShift ) )
             return false;
-        IDCT_8x8_add_sse2( coeff, luma + 8, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma + 8, lPitch );
     }
 
     // decode Cb block
@@ -362,7 +362,7 @@ static bool dec_mb_residual( FrmDecContext* ctx, int mx, int my, uint32_t cbpFla
 
         const int cPitch = ctx->picPitch[1];
         uint8_t* dstCb = ctx->picPlane[1] + (my * cPitch + mx) * 8;
-        IDCT_8x8_add_sse2( coeff, dstCb, cPitch );
+        IDCT_8x8_add_sse4( coeff, dstCb, cPitch );
     }
 
     // decode Cr block
@@ -378,7 +378,7 @@ static bool dec_mb_residual( FrmDecContext* ctx, int mx, int my, uint32_t cbpFla
 
         const int cPitch = ctx->picPitch[2];
         uint8_t* dstCr = ctx->picPlane[2] + (my * cPitch + mx) * 8;
-        IDCT_8x8_add_sse2( coeff, dstCr, cPitch );
+        IDCT_8x8_add_sse4( coeff, dstCr, cPitch );
     }
 
     return true;
@@ -1392,8 +1392,23 @@ static MvUnion get_mb_mv_pred( const FrmDecContext* ctx, const MbContext* leftMb
     return mvPred;
 }
 
+// 检查参考帧 B_Direct ColMV 数据是否就绪
+static inline void check_BD_col_mv( FrmDecContext* ctx, const DecFrame* colFrame, int my )
+{
+    if( ctx->curFrame == colFrame ) // 同一帧的第二场, 第一场数据总是已解码
+    {
+        assert( ctx->fieldIdx == 1 );
+        return;
+    }
+
+    // 等待参考帧, +1 是为了让参考帧多解码一些
+    assert( colFrame->decState );
+    ctx->refRequest.m_refLine = (my + 1) * 16 * (2 - ctx->frameCoding);  // 可能存在帧场自适应编码, 转化为帧的刻度
+    colFrame->decState->wait_request( &ctx->refRequest );
+}
+
 // 计算 BDirect 运动矢量, 针对 BfieldEnhanced == 1 的情形
-static void get_BD_mv_BFE( FrmDecContext* ctx, int mx, int my, int blkIdx, int8_t curIdx[2], MvUnion curMvs[2] )
+static void get_BD_mv_BFE( FrmDecContext* ctx, int mx, int my, int blkIdx, int8_t refIdxs[2], MvUnion curMvs[2] )
 {
     // 根据标准, 参考帧也应是场编码, 并且 top_field_first 保持一致
     // 对应位置总是选择后向参考帧的第一场
@@ -1405,18 +1420,18 @@ static void get_BD_mv_BFE( FrmDecContext* ctx, int mx, int my, int blkIdx, int8_
     {
         const MbContext* leftMb = &ctx->leftMb;
         const MbContext* topMb = ctx->topLine + mx;
-        curIdx[0] = 0;
-        curIdx[1] = 1;
+        refIdxs[0] = 0;
+        refIdxs[1] = 1;
         curMvs[0] = get_mb_mv_pred( ctx, leftMb, topMb, 0, 0 );
         curMvs[1] = get_mb_mv_pred( ctx, leftMb, topMb, 1, 1 );
         return;
     }
 
     if( ctx->fieldIdx == 0 && colRefIdx != 0 )
-        curIdx[0] = 2;
+        refIdxs[0] = 2;
     else
-        curIdx[0] = 0;
-    curIdx[1] = 1;          // 总是选择标准中标识为 0 的后向参考场
+        refIdxs[0] = 0;
+    refIdxs[1] = 1;          // 总是选择标准中标识为 0 的后向参考场
 
     MvUnion mvRef = colMv->mvs[blkIdx];
     if( (colRefIdx & 1) == 0 )          // mvRef 指向顶底不同的场
@@ -1428,47 +1443,50 @@ static void get_BD_mv_BFE( FrmDecContext* ctx, int mx, int my, int blkIdx, int8_
     }
 
     int distDen = colFrame->denDistBD[0][colRefIdx];
-    curMvs[0] = BD_forward_scale( mvRef, ctx->refDist[curIdx[0]], distDen );
-    curMvs[1] = BD_back_scale( mvRef, ctx->refDist[curIdx[1]], distDen );
+    curMvs[0] = BD_forward_scale( mvRef, ctx->refDist[refIdxs[0]], distDen );
+    curMvs[1] = BD_back_scale( mvRef, ctx->refDist[refIdxs[1]], distDen );
 
     if( ctx->fieldIdx == 0 )
     {
         if( ctx->curFrame->topfield_first )     // 当前为顶场
         {
-            curMvs[0].y -= 2 - curIdx[0];
+            curMvs[0].y -= 2 - refIdxs[0];
         }
         else    // 当前为底场
         {
-            curMvs[0].y += 2 - curIdx[0];
+            curMvs[0].y += 2 - refIdxs[0];
         }
     }
     else
     {
         if( ctx->curFrame->topfield_first )     // 当前为底场
         {
-            curMvs[0].y += curIdx[0];
+            curMvs[0].y += refIdxs[0];
             curMvs[1].y += 2;
         }
         else    // 当前为顶场
         {
-            curMvs[0].y -= curIdx[0];
+            curMvs[0].y -= refIdxs[0];
             curMvs[1].y -= 2;
         }
     }
 }
 
 // 计算 BDirect 运动矢量
-static void get_BD_mv( FrmDecContext* ctx, int mx, int my, int blkIdx, int8_t curIdx[2], MvUnion curMvs[2] )
+static void get_BD_mv( FrmDecContext* ctx, int mx, int my, int blkIdx, int8_t refIdxs[2], MvUnion curMvs[2] )
 {
     const MbContext* leftMb = &ctx->leftMb;
     const MbContext* topMb = ctx->topLine + mx;
     const DecFrame* curFrame = ctx->curFrame;
     const DecFrame* colFrame = ctx->refFrames[0];   // 后向参考帧
 
+    // 检查参考帧 B_Direct ColMV 数据是否就绪
+    check_BD_col_mv( ctx, colFrame, my );
+
     if( curFrame->frameCoding != 0 )        // 当前为帧编码
     {
-        curIdx[0] = 0;
-        curIdx[1] = 1;
+        refIdxs[0] = 0;
+        refIdxs[1] = 1;
 
         if( colFrame->frameCoding != 0 )    // 后向参考图像为帧编码
         {        
@@ -1513,7 +1531,7 @@ static void get_BD_mv( FrmDecContext* ctx, int mx, int my, int blkIdx, int8_t cu
     {
         if( ctx->bFieldEnhance != 0 )       // AVS+ 扩展功能
         {
-            get_BD_mv_BFE( ctx, mx, my, blkIdx, curIdx, curMvs );
+            get_BD_mv_BFE( ctx, mx, my, blkIdx, refIdxs, curMvs );
             return;
         }
         if( colFrame->frameCoding == 0 )    // 后向参考图像为场编码
@@ -1524,8 +1542,8 @@ static void get_BD_mv( FrmDecContext* ctx, int mx, int my, int blkIdx, int8_t cu
             int colRefIdx = colMv->refIdxs[blkIdx];
             if( colRefIdx < 0 )     // I MacroBlock
             {
-                curIdx[0] = 0;
-                curIdx[1] = 1;
+                refIdxs[0] = 0;
+                refIdxs[1] = 1;
                 curMvs[0] = get_mb_mv_pred( ctx, leftMb, topMb, 0, 0 );
                 curMvs[1] = get_mb_mv_pred( ctx, leftMb, topMb, 1, 1 );
             }
@@ -1533,12 +1551,12 @@ static void get_BD_mv( FrmDecContext* ctx, int mx, int my, int blkIdx, int8_t cu
             {
                 // fldIdx == colRefIdx: mvRef 指向的参考场与前向参考场 0 相同
                 assert( decIdx == 0 || decIdx == 1 );
-                curIdx[0] = (decIdx == colRefIdx) ? 0 : 2;
-                curIdx[1] = (ctx->fieldIdx << 1) + 1;
+                refIdxs[0] = (decIdx == colRefIdx) ? 0 : 2;
+                refIdxs[1] = (ctx->fieldIdx << 1) + 1;
                 int distDen = colFrame->denDistBD[decIdx][colRefIdx];
                 MvUnion mvRef = colMv->mvs[blkIdx];
-                curMvs[0] = BD_forward_scale( mvRef, ctx->refDist[curIdx[0]], distDen );
-                curMvs[1] = BD_back_scale( mvRef, ctx->refDist[curIdx[1]], distDen );
+                curMvs[0] = BD_forward_scale( mvRef, ctx->refDist[refIdxs[0]], distDen );
+                curMvs[1] = BD_back_scale( mvRef, ctx->refDist[refIdxs[1]], distDen );
             }        
         }
         else    // 后向参考图像为帧编码
@@ -1547,20 +1565,20 @@ static void get_BD_mv( FrmDecContext* ctx, int mx, int my, int blkIdx, int8_t cu
             int colRefIdx = colMv->refIdxs[blkIdx];
             if( colRefIdx < 0 )     // I MacroBlock
             {
-                curIdx[0] = 0;
-                curIdx[1] = 1;
+                refIdxs[0] = 0;
+                refIdxs[1] = 1;
                 curMvs[0] = get_mb_mv_pred( ctx, leftMb, topMb, 0, 0 );
                 curMvs[1] = get_mb_mv_pred( ctx, leftMb, topMb, 1, 1 );
             }
             else
             {
-                curIdx[0] = 2;      // 标准在此处描述不清...
-                curIdx[1] = (ctx->fieldIdx << 1) + 1;
+                refIdxs[0] = 2;      // 标准在此处描述不清...
+                refIdxs[1] = (ctx->fieldIdx << 1) + 1;
                 int distDen = colFrame->denDistBD[0][colRefIdx];
                 MvUnion mvRef = colMv->mvs[blkIdx];
                 mvRef.y /= 2;
-                curMvs[0] = BD_forward_scale( mvRef, ctx->refDist[curIdx[0]], distDen );
-                curMvs[1] = BD_back_scale( mvRef, ctx->refDist[curIdx[1]], distDen );
+                curMvs[0] = BD_forward_scale( mvRef, ctx->refDist[refIdxs[0]], distDen );
+                curMvs[1] = BD_back_scale( mvRef, ctx->refDist[refIdxs[1]], distDen );
             }
         }
     }
@@ -2729,7 +2747,7 @@ static bool dec_mb_residual_AEC( FrmDecContext* ctx, int mx, int my, uint32_t cb
     {
         if( !parser->dec_coeff_block( coeff, 58, dqScale, dqShift ) )
             return false;
-        IDCT_8x8_add_sse2( coeff, luma, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma, lPitch );
     }
 
     // decode Luma block 1
@@ -2737,7 +2755,7 @@ static bool dec_mb_residual_AEC( FrmDecContext* ctx, int mx, int my, uint32_t cb
     {
         if( !parser->dec_coeff_block( coeff, 58, dqScale, dqShift ) )
             return false;
-        IDCT_8x8_add_sse2( coeff, luma + 8, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma + 8, lPitch );
     }
 
     // decode Luma block 2
@@ -2746,7 +2764,7 @@ static bool dec_mb_residual_AEC( FrmDecContext* ctx, int mx, int my, uint32_t cb
     {
         if( !parser->dec_coeff_block( coeff, 58, dqScale, dqShift ) )
             return false;
-        IDCT_8x8_add_sse2( coeff, luma, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma, lPitch );
     }
 
     // decode Luma block 3
@@ -2754,7 +2772,7 @@ static bool dec_mb_residual_AEC( FrmDecContext* ctx, int mx, int my, uint32_t cb
     {
         if( !parser->dec_coeff_block( coeff, 58, dqScale, dqShift ) )
             return false;
-        IDCT_8x8_add_sse2( coeff, luma + 8, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma + 8, lPitch );
     }
 
     // decode Cb block
@@ -2770,7 +2788,7 @@ static bool dec_mb_residual_AEC( FrmDecContext* ctx, int mx, int my, uint32_t cb
             return false;
         const int cPitch = ctx->picPitch[1];
         uint8_t* dstCb = ctx->picPlane[1] + (my * cPitch + mx) * 8;
-        IDCT_8x8_add_sse2( coeff, dstCb, cPitch );
+        IDCT_8x8_add_sse4( coeff, dstCb, cPitch );
     }
 
     // decode Cr block
@@ -2785,7 +2803,7 @@ static bool dec_mb_residual_AEC( FrmDecContext* ctx, int mx, int my, uint32_t cb
             return false;
         const int cPitch = ctx->picPitch[2];
         uint8_t* dstCr = ctx->picPlane[2] + (my * cPitch + mx) * 8;
-        IDCT_8x8_add_sse2( coeff, dstCr, cPitch );
+        IDCT_8x8_add_sse4( coeff, dstCr, cPitch );
     }
 
     return true;
@@ -2918,7 +2936,7 @@ void dec_macroblock_I8x8_AEC( FrmDecContext* ctx, int mx, int my )
             ctx->errCode = IRK_AVS_DEC_BAD_STREAM;
             return;
         }
-        IDCT_8x8_add_sse2( coeff, luma, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma, lPitch );
     }
 
     // decode luma block 1
@@ -2934,7 +2952,7 @@ void dec_macroblock_I8x8_AEC( FrmDecContext* ctx, int mx, int my )
             ctx->errCode = IRK_AVS_DEC_BAD_STREAM;
             return;
         }
-        IDCT_8x8_add_sse2( coeff, luma + 8, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma + 8, lPitch );
     }
 
     // decode luma block 2
@@ -2951,7 +2969,7 @@ void dec_macroblock_I8x8_AEC( FrmDecContext* ctx, int mx, int my )
             ctx->errCode = IRK_AVS_DEC_BAD_STREAM;
             return;
         }
-        IDCT_8x8_add_sse2( coeff, luma, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma, lPitch );
     }
 
     // decode luma block 3
@@ -2967,7 +2985,7 @@ void dec_macroblock_I8x8_AEC( FrmDecContext* ctx, int mx, int my )
             ctx->errCode = IRK_AVS_DEC_BAD_STREAM;
             return;
         }
-        IDCT_8x8_add_sse2( coeff, luma + 8, lPitch );
+        IDCT_8x8_add_sse4( coeff, luma + 8, lPitch );
     }
 
     // decode Cb block
@@ -2994,7 +3012,7 @@ void dec_macroblock_I8x8_AEC( FrmDecContext* ctx, int mx, int my )
             return;
         }
 
-        IDCT_8x8_add_sse2( coeff, dstCb, cPitch );
+        IDCT_8x8_add_sse4( coeff, dstCb, cPitch );
     }
 
     // decode Cr block
@@ -3016,7 +3034,7 @@ void dec_macroblock_I8x8_AEC( FrmDecContext* ctx, int mx, int my )
             return;
         }
 
-        IDCT_8x8_add_sse2( coeff, dstCr, cPitch );
+        IDCT_8x8_add_sse4( coeff, dstCr, cPitch );
     }
 
     // 当前宏块可供右侧和下一行宏块使用
@@ -3041,7 +3059,7 @@ void dec_macroblock_I8x8_AEC( FrmDecContext* ctx, int mx, int my )
     if( ctx->colMvs )
     {
         BDColMvs* colMv = ctx->colMvs + my * ctx->mbColCnt + mx;
-        *(uint32_t*)(colMv->refIdxs) = 0xFFFFFFFF;
+        *(uint32_as*)(colMv->refIdxs) = 0xFFFFFFFF;
     }
 }
 

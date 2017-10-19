@@ -121,13 +121,19 @@ void DecodingState::update_state( int line )
     // 通知已满足条件的参考数据等待者
     if( m_reqCnt > 0 )
     {
+        int checkedCnt = m_reqCnt;
         for( int i = 0; i < MAX_THEAD_CNT; i++ )
         {
-            if( m_reqList[i] != nullptr && m_reqList[i]->m_refLine <= line )
+            if( m_reqList[i] != nullptr )
             {
-                m_reqList[i]->m_NotifyEvt.set();
-                m_reqList[i] = nullptr;
-                m_reqCnt--;
+                if( m_reqList[i]->m_refLine <= line )
+                {
+                    m_reqList[i]->m_NotifyEvt.set();
+                    m_reqList[i] = nullptr;
+                    m_reqCnt--;
+                }
+                if( --checkedCnt == 0 )
+                    break;
             }
         }
     }

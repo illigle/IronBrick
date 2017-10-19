@@ -534,8 +534,8 @@ void AvsAecParser::dec_mvd( int16_t* mvd, int16_t* mvdAbs )
 // q.v. 8.4.4.2
 bool AvsAecParser::dec_coeff_block( int16_t* coeff, int ctxIdxBase, int scale, uint8_t shift )
 {
-    static const uint8_t s_PriIdx3[8] = { 0, 3, 6, 9, 9, 12, 12 };
-    static const uint8_t s_PriIdx4[8] = { 0 + 46, 4 + 46, 8 + 46, 12 + 46, 12 + 46, 16 + 46, 16 + 46 };
+    static const int s_PriIdx3[8] = { 0 - 1, 3 - 1, 6 - 1, 9 - 1, 9 - 1, 12 - 1, 12 - 1 };
+    static const int s_PriIdx4[8] = { 0 + 46, 4 + 46, 8 + 46, 12 + 46, 12 + 46, 16 + 46, 16 + 46 };
 
     int16_t levelAry[65];
     uint8_t runAry[65];
@@ -564,12 +564,12 @@ bool AvsAecParser::dec_coeff_block( int16_t* coeff, int ctxIdxBase, int scale, u
     runAry[0] = run;
 
     int ctxIdxW = ctxIdxBase + 14;
+    int ctxIdxL = ctxIdxBase + s_PriIdx3[lMax];
     int i = 1;
     int pos = run;
     while( 1 )
     {
         // parse EOB
-        int ctxIdxL = ctxIdxBase + s_PriIdx3[lMax] - 1;
         if( pos >= 64 )
         {
             if( pos > 64 || dec_decision2( ctxIdxL, ctxIdxW + 31 ) == 0 )   // bad stream
@@ -593,7 +593,10 @@ bool AvsAecParser::dec_coeff_block( int16_t* coeff, int ctxIdxBase, int scale, u
             ctxIdxR += 2;
             levelAry[i] = 2 + dec_zero_cnt( ctxIdxL + 2, 16384 );
             if( levelAry[i] > lMax )
+            {
                 lMax = MIN( levelAry[i], 5 );
+                ctxIdxL = ctxIdxBase + s_PriIdx3[lMax];
+            }
         }
 
         // parse coeffSign

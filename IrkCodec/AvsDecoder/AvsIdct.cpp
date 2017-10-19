@@ -11,6 +11,7 @@
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
+#include <smmintrin.h>      // SSE-4
 #include "AvsDecUtility.h"
 
 alignas(16) const int16_t s_RndCol[8] = {4, 4, 4, 4, 4, 4, 4, 4};
@@ -127,7 +128,7 @@ alignas(16) const int16_t s_RndRow[8] = {64, 64, 64, 64, 64, 64, 64, 64};
 namespace irk_avs_dec {
 
 // src: 列主序存储的 DCT 系数
-void IDCT_8x8_add_sse2( const int16_t src[64], uint8_t* dst, int dstPitch )
+void IDCT_8x8_add_sse4( const int16_t src[64], uint8_t* dst, int dstPitch )
 {
     assert( ((uintptr_t)src & 15) == 0 );
     __m128i tm1, tm3, tm5, tm7;
@@ -158,11 +159,10 @@ void IDCT_8x8_add_sse2( const int16_t src[64], uint8_t* dst, int dstPitch )
     ROUND_SHIFT( xm0, xm3, xm7, xm5, xm2, xm1, xm4, xm6, tm5, 7 );
 
     // 与预测值相加
-    tm5 = _mm_setzero_si128();  
     tm1 = _mm_loadl_epi64( (__m128i*)dst );
     tm3 = _mm_loadl_epi64( (__m128i*)(dst + dstPitch) );
-    tm1 = _mm_unpacklo_epi8( tm1, tm5 );
-    tm3 = _mm_unpacklo_epi8( tm3, tm5 );
+    tm1 = _mm_cvtepu8_epi16( tm1 );
+    tm3 = _mm_cvtepu8_epi16( tm3 );
     tm1 = _mm_adds_epi16( tm1, xm0 );
     tm3 = _mm_adds_epi16( tm3, xm3 );
     tm1 = _mm_packus_epi16( tm1, tm1 );
@@ -172,8 +172,8 @@ void IDCT_8x8_add_sse2( const int16_t src[64], uint8_t* dst, int dstPitch )
     dst += dstPitch * 2;
     tm1 = _mm_loadl_epi64( (__m128i*)dst );
     tm3 = _mm_loadl_epi64( (__m128i*)(dst + dstPitch) );
-    tm1 = _mm_unpacklo_epi8( tm1, tm5 );
-    tm3 = _mm_unpacklo_epi8( tm3, tm5 );
+    tm1 = _mm_cvtepu8_epi16( tm1 );
+    tm3 = _mm_cvtepu8_epi16( tm3 );
     tm1 = _mm_adds_epi16( tm1, xm7 );
     tm3 = _mm_adds_epi16( tm3, xm5 );
     tm1 = _mm_packus_epi16( tm1, tm1 );
@@ -183,8 +183,8 @@ void IDCT_8x8_add_sse2( const int16_t src[64], uint8_t* dst, int dstPitch )
     dst += dstPitch * 2;
     tm1 = _mm_loadl_epi64( (__m128i*)dst );
     tm3 = _mm_loadl_epi64( (__m128i*)(dst + dstPitch) );
-    tm1 = _mm_unpacklo_epi8( tm1, tm5 );
-    tm3 = _mm_unpacklo_epi8( tm3, tm5 );
+    tm1 = _mm_cvtepu8_epi16( tm1 );
+    tm3 = _mm_cvtepu8_epi16( tm3 );
     tm1 = _mm_adds_epi16( tm1, xm2 );
     tm3 = _mm_adds_epi16( tm3, xm1 );
     tm1 = _mm_packus_epi16( tm1, tm1 );
@@ -194,8 +194,8 @@ void IDCT_8x8_add_sse2( const int16_t src[64], uint8_t* dst, int dstPitch )
     dst += dstPitch * 2;
     tm1 = _mm_loadl_epi64( (__m128i*)dst );
     tm3 = _mm_loadl_epi64( (__m128i*)(dst + dstPitch) );
-    tm1 = _mm_unpacklo_epi8( tm1, tm5 );
-    tm3 = _mm_unpacklo_epi8( tm3, tm5 );
+    tm1 = _mm_cvtepu8_epi16( tm1 );
+    tm3 = _mm_cvtepu8_epi16( tm3 );
     tm1 = _mm_adds_epi16( tm1, xm4 );
     tm3 = _mm_adds_epi16( tm3, xm6 );
     tm1 = _mm_packus_epi16( tm1, tm1 );

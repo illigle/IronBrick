@@ -11,7 +11,7 @@
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
-#include <emmintrin.h>      // SSE-2
+#include <smmintrin.h>      // SSE-4
 #include <assert.h>
 #include "AvsIntraPred.h"
 
@@ -91,15 +91,15 @@ void intra_pred_dc( uint8_t* dst, int pitch, NBUsable usable )
         LOAD_LEFT_EDGE_X10( buf, left, pitch );
 
         xm6 = _mm_setzero_si128();
+        xm6 = _mm_cmpeq_epi16( xm6, xm6 );          // -1
         xm0 = _mm_loadu_si128( (__m128i*)(top-1) ); // 边界有填充, 无需担心越界
         xm3 = _mm_loadu_si128( (__m128i*)buf );
         xm1 = _mm_srli_si128( xm0, 1 );             // top[0...7]
         xm4 = _mm_srli_si128( xm3, 1 );             // left[0...7]
-        xm0 = _mm_unpacklo_epi8( xm0, xm6 );
-        xm1 = _mm_unpacklo_epi8( xm1, xm6 );
-        xm3 = _mm_unpacklo_epi8( xm3, xm6 );
-        xm4 = _mm_unpacklo_epi8( xm4, xm6 );
-        xm6 = _mm_cmpeq_epi16( xm6, xm6 );          // -1
+        xm0 = _mm_cvtepu8_epi16( xm0 );
+        xm1 = _mm_cvtepu8_epi16( xm1 );
+        xm3 = _mm_cvtepu8_epi16( xm3 );
+        xm4 = _mm_cvtepu8_epi16( xm4 );
         xm2 = _mm_srli_si128( xm1, 2 );
         xm5 = _mm_srli_si128( xm4, 2 );
         xm1 = _mm_sub_epi16( xm1, xm6 );            // + 1

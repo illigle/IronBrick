@@ -632,7 +632,7 @@ bool JsonValue::get( JsonArray*& outAry )
 // set string, str must be null-terminated if len < 0
 void JsonValue::set( const char* str, int len )
 {
-    if( m_type == Json_string )		// already contains string
+    if( m_type == Json_string )     // already contains string
     {
         m_value.str->assign( str, len );
     }
@@ -652,7 +652,7 @@ void JsonValue::set( const std::string& str )
 // make as empty JSON String, return reference to the String
 JsonString& JsonValue::make_empty_string()
 {
-    if( m_type == Json_string )		// already contains string
+    if( m_type == Json_string )     // already contains string
     {
         m_value.str->clear();
     }
@@ -671,7 +671,7 @@ JsonObject& JsonValue::make_empty_object()
 {
     if( m_type == Json_object ) // already contains JSON Object
     {
-        m_value.obj->clear();	// make empty
+        m_value.obj->clear();   // make empty
     }
     else
     {
@@ -686,9 +686,9 @@ JsonObject& JsonValue::make_empty_object()
 // make as empty JSON Array, return reference to the Array
 JsonArray& JsonValue::make_empty_array()
 {
-    if( m_type == Json_array )	// already contains JSON Array
+    if( m_type == Json_array )  // already contains JSON Array
     {
-        m_value.ary->clear();	// make empty
+        m_value.ary->clear();   // make empty
     }
     else
     {
@@ -910,7 +910,7 @@ static void to_json_text( const char* str, string& dst )
         {
             dst += "\\\\";
         }
-        else if( *src < 0x20 )	// control character
+        else if( *src < 0x20 )  // control character
         {
             if( *src == '\n' )
                 dst += "\\n";
@@ -929,7 +929,7 @@ static void to_json_text( const char* str, string& dst )
                 dst += s_HexChar[*src & 0xF];
             }
         }
-        else	// normal character
+        else    // normal character
         {
             dst.push_back( (char)*src );
         }
@@ -1233,17 +1233,17 @@ int JsonString::parse( const char* text )
         {
             return -1;
         }
-        else if( text[srcLen] != '\\' )	    // normal character
+        else if( text[srcLen] != '\\' )     // normal character
         {
             srcLen++;
             dstLen++;
         }
-        else	// escape character
+        else    // escape character
         {
-            if( text[srcLen+1] == 0 )	// invalid string
+            if( text[srcLen+1] == 0 )   // invalid string
                 return -1;
 
-            if( text[srcLen+1] == 'u' )	// unicode code number
+            if( text[srcLen+1] == 'u' ) // unicode code number
             {
                 for( int j = srcLen + 2; j < srcLen + 6; j++ )
                 {
@@ -1251,7 +1251,7 @@ int JsonString::parse( const char* text )
                         return -1;
                 }
                 srcLen += 6;
-                dstLen += 4;	// a UTF-8 char may need 4 bytes
+                dstLen += 4;    // a UTF-8 char may need 4 bytes
             }
             else
             {
@@ -1260,12 +1260,12 @@ int JsonString::parse( const char* text )
             }
         }
     }
-    if( text[srcLen] != '\"' )	// can't find ending \", invalid string
+    if( text[srcLen] != '\"' )  // can't find ending \", invalid string
     {
         return -1;
     }
 
-    if( dstLen == srcLen )	    // normal string, no conversion needed
+    if( dstLen == srcLen )      // normal string, no conversion needed
     {
         this->assign( text, srcLen );
         return srcLen + 2;
@@ -1275,11 +1275,11 @@ int JsonString::parse( const char* text )
     char* dst = this->alloc( dstLen + 1 );
     for( int k = 0; k < srcLen; )
     {
-        if( text[k] != '\\' )	// normal character
+        if( text[k] != '\\' )   // normal character
         {
             *dst++ = text[k++];
         }
-        else	// escape character
+        else    // escape character
         {
             if( text[k+1] == 'n' )
             {
@@ -1321,13 +1321,13 @@ int JsonString::parse( const char* text )
                 *dst++ = '/';
                 k += 2;
             }
-            else if( text[k+1] == 'u' )		// unicode code number
+            else if( text[k+1] == 'u' )     // unicode code number
             {
                 // convert to UTF-8
                 int cnt = json_escape_to_utf8( text + k, dst );
                 if( cnt <= 0 )
                     return -1;
-                else if( cnt > 3 )	// 4-bytes UTF-8
+                else if( cnt > 3 )  // 4-bytes UTF-8
                     k += 6;
                 k += 6;
                 dst += cnt;
@@ -1352,24 +1352,24 @@ int JsonMember::parse( const char* text, int depth )
     // fill member's name
     while( IS_SPACE( text[len] ) )  // skip space
         len++;
-    if( text[len] != '\"' )		    // invalid, must be string
+    if( text[len] != '\"' )         // invalid, must be string
         return -1;
     int used = m_pName->parse( text + len );
     if( used > 0 )
         len += used;
     else
-        return -1;		// parsing failed
+        return -1;      // parsing failed
 
     // fill member's value
     while( IS_SPACE( text[len] ) )  // skip space
         len++;
-    if( text[len++] != ':' )	    // skip colon
+    if( text[len++] != ':' )        // skip colon
         return -1;
     used = JsonValue::parse( text + len, depth );
     if( used > 0 )
         len += used;
     else
-        return -1;		// parsing failed
+        return -1;      // parsing failed
 
     return len;
 }
@@ -1401,7 +1401,7 @@ int JsonArray::parse( const char* text, int depth )
         if( used > 0 )
             len += used;
         else
-            break;	// parsing failed
+            break;  // parsing failed
 
         // check next element
         while( IS_SPACE( text[len] ) )
@@ -1445,7 +1445,7 @@ int JsonObject::parse( const char* text, int depth )
         if( used > 0 )
             len += used;
         else
-            break;	// parsing failed
+            break;  // parsing failed
 
         // check next member
         while( IS_SPACE( text[len] ) )
@@ -1516,7 +1516,7 @@ int JsonValue::parse( const char* text, int depth )
         else
             len = -1;
     }
-    else if( *text == '\"' )	// string
+    else if( *text == '\"' )    // string
     {
         JsonString& str = this->make_empty_string();
         int used = str.parse( text );
@@ -1525,7 +1525,7 @@ int JsonValue::parse( const char* text, int depth )
         else
             len = -1;
     }
-    else if( *text == '{' )		// JSON Object
+    else if( *text == '{' )     // JSON Object
     {
         JsonObject& obj = this->make_empty_object();
         int used = obj.parse( text, depth );
@@ -1534,7 +1534,7 @@ int JsonValue::parse( const char* text, int depth )
         else
             len = -1;
     }
-    else if( *text == '[' )		// JSON Array
+    else if( *text == '[' )     // JSON Array
     {
         JsonArray& ary = this->make_empty_array();
         int used = ary.parse( text, depth );
@@ -1565,7 +1565,7 @@ int JsonValue::parse( const char* text, int depth )
         len = -1;
     }
 
-    if( len < 0 )	// parsing failed
+    if( len < 0 )   // parsing failed
     {
         this->clear();
     }
@@ -1648,7 +1648,7 @@ JsonStatus JsonDoc::parse_text( const char* text )
     m_root.clear();     // remove old doc(if exists)
 
     int parsed = m_root.parse( text, 0 );
-    if( parsed <= 0 )	// parsing failed
+    if( parsed <= 0 )   // parsing failed
     {
         m_root.clear();
         return JsonStatus::Invalid;

@@ -154,7 +154,7 @@ public:
     void get_digest( uint8_t* md5 ) override;
     void fill_state_from( const CryptoHasher* other ) override;
 private:
-    uint64_t m_size;		// total size
+    uint64_t m_size;        // total size
     uint32_t m_state[4];
     uint8_t  m_buff[64];
 };
@@ -217,7 +217,7 @@ void MD5_Hasher::get_digest( uint8_t* md5 )
         memset( m_buff, 0, 64 );
     }
 
-    *(uint64_as*)(m_buff + 56) = m_size * 8;	// total bits
+    *(uint64_as*)(m_buff + 56) = m_size * 8;    // total bits
     md5_transform( m_state, m_buff );
 
     memcpy( md5, m_state, 16 );
@@ -449,7 +449,7 @@ public:
     void get_digest( uint8_t* outbuf ) override;
     void fill_state_from( const CryptoHasher* other ) override;
 private:
-    uint64_t m_size;		// total size
+    uint64_t m_size;        // total size
     uint32_t m_state[5];
     uint8_t  m_buff[64];
 };
@@ -509,7 +509,7 @@ void SHA1_hasher::get_digest( uint8_t* outbuf )
         sha1_transform( m_state, m_buff );
         memset( m_buff, 0, 64 );
     }
-    BE_WRITE64( m_buff + 56, m_size * 8 );      // total bits	
+    BE_WRITE64( m_buff + 56, m_size * 8 );      // total bits
     sha1_transform( m_state, m_buff );
 
     BE_WRITE32( outbuf, m_state[0] );
@@ -712,7 +712,7 @@ public:
     void get_digest( uint8_t* outbuf ) override;
     void fill_state_from( const CryptoHasher* other ) override;
 protected:
-    uint64_t m_size;		// total size
+    uint64_t m_size;        // total size
     uint32_t m_state[8];
     uint8_t  m_buff[64];
 };
@@ -775,7 +775,7 @@ void SHA2_hasher256::get_digest( uint8_t* outbuf )
         sha2_transform256( m_state, m_buff );
         memset( m_buff, 0, 64 );
     }
-    BE_WRITE64( m_buff + 56, m_size * 8 );      // total bits	
+    BE_WRITE64( m_buff + 56, m_size * 8 );      // total bits
     sha2_transform256( m_state, m_buff );
 
     BE_WRITE32( outbuf, m_state[0] );
@@ -830,7 +830,7 @@ void SHA2_hasher224::get_digest( uint8_t* outbuf )
         sha2_transform256( m_state, m_buff );
         memset( m_buff, 0, 64 );
     }
-    BE_WRITE64( m_buff + 56, m_size * 8 );      // total bits	
+    BE_WRITE64( m_buff + 56, m_size * 8 );      // total bits
     sha2_transform256( m_state, m_buff );
 
     BE_WRITE32( outbuf, m_state[0] );
@@ -1208,8 +1208,8 @@ uint32_t to_hexstring( const uint8_t* digest, uint32_t size, char* dstbuf )
     uint32_t k = 0;
     for( uint32_t i = 0; i < size; i++ )
     {
-        dstbuf[k]	= s_HexChar[digest[i] >> 4];
-        dstbuf[k+1]	= s_HexChar[digest[i] & 0xF];
+        dstbuf[k]   = s_HexChar[digest[i] >> 4];
+        dstbuf[k+1] = s_HexChar[digest[i] & 0xF];
         k += 2;
     }
     return k;

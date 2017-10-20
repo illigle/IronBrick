@@ -141,8 +141,8 @@ class XmlElem : IrkNocopy
         explicit AttrRange( const detail::SList<XmlAttr>* plist ) : m_atlist(plist) {}
         typedef detail::JXIterator<XmlAttr> Iterator;
         typedef detail::JXIterator<const XmlAttr> CIterator;
-        Iterator begin()	    { return Iterator(m_atlist->m_firstNode); }
-        Iterator end()		    { return Iterator(nullptr); }
+        Iterator begin()        { return Iterator(m_atlist->m_firstNode); }
+        Iterator end()          { return Iterator(nullptr); }
         CIterator begin() const { return CIterator(m_atlist->m_firstNode); }
         CIterator end() const   { return CIterator(nullptr); }
     private:
@@ -256,10 +256,10 @@ public:
     // child elements traversal
     typedef detail::JXIterator<XmlElem> Iterator;
     typedef detail::JXIterator<const XmlElem> CIterator;
-    Iterator begin()			        { return Iterator(m_children.m_firstNode); }
-    Iterator end()				        { return Iterator(nullptr); }
-    CIterator begin() const	            { return CIterator(m_children.m_firstNode); }
-    CIterator end() const		        { return CIterator(nullptr); }
+    Iterator begin()                    { return Iterator(m_children.m_firstNode); }
+    Iterator end()                      { return Iterator(nullptr); }
+    CIterator begin() const             { return CIterator(m_children.m_firstNode); }
+    CIterator end() const               { return CIterator(nullptr); }
 
     // children count
     int child_count() const             { return m_childCnt; }
@@ -363,8 +363,8 @@ enum class XmlStatus
 {
     Ok = 0,         // No Error
     Invalid,        // invalid XML content or syntax
-    IOFailed,		// file read/write failed
-    Unsupported,	// unsupported (such as UTF-16 encoding)
+    IOFailed,       // file read/write failed
+    Unsupported,    // unsupported (such as UTF-16 encoding)
 };
 
 class XmlDoc : IrkNocopy

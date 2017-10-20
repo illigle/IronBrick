@@ -23,8 +23,8 @@ static void cpuidex( int result[4], int eaxVal, int ecxVal )
 {
     int a, b, c, d;
 #if defined(__i386__) && defined(__PIC__)
-    __asm__("xchgl\t%%ebx, %k1\n\t"	
-            "cpuid\n\t"	
+    __asm__("xchgl\t%%ebx, %k1\n\t"
+            "cpuid\n\t"
             "xchgl\t%%ebx, %k1\n\t"
             : "=a"(a), "=&r"(b), "=c"(c), "=d"(d)
             : "0"(eaxVal), "2"(ecxVal) );

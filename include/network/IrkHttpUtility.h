@@ -36,10 +36,10 @@ int http_parse_status_line( const char* response, int size, int& status,
 // HTTP timeout record
 struct HttpTimeout
 {
-    int	resovleTimeout;     // name resolution timeout in milliseconds
-    int	connectTimeout;     // server connection timeout in milliseconds
-    int	sendTimeout;        // request sending timeout in milliseconds
-    int	recvTimeout;        // response receiving timeout in milliseconds
+    int resovleTimeout;     // name resolution timeout in milliseconds
+    int connectTimeout;     // server connection timeout in milliseconds
+    int sendTimeout;        // request sending timeout in milliseconds
+    int recvTimeout;        // response receiving timeout in milliseconds
 };
 
 // HTTP header field(name:value), UTF-8 encoding
@@ -192,7 +192,7 @@ private:
     HttpHeader          m_htab;             // header table
     std::vector<char>   m_body;             // body data
     int64_t             m_contentLength;    // Content-Length
-    bool			    m_customTimeout;    // using custom timeout
+    bool                m_customTimeout;    // using custom timeout
     HttpTimeout         m_timeout;
 };
 
@@ -359,7 +359,7 @@ private:
     WHttpHeader         m_htab;             // header table
     std::vector<char>   m_body;             // body data
     size_t              m_contentLength;    // Content-Length
-    bool			    m_customTimeout;    // using custom timeout
+    bool                m_customTimeout;    // using custom timeout
     HttpTimeout         m_timeout;
 };
 

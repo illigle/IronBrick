@@ -57,12 +57,12 @@ class JsonValue : IrkNocopy
 {
 public:
     // type query
-    bool is_null() const	{ return m_type == Json_null; }
-    bool is_bool() const	{ return m_type == Json_boolean; }
-    bool is_number() const	{ return m_type == Json_int64 || m_type == Json_uint64 || m_type == Json_double; }
-    bool is_string() const	{ return m_type == Json_string; }
-    bool is_object() const	{ return m_type == Json_object; }
-    bool is_array() const	{ return m_type == Json_array; }
+    bool is_null() const    { return m_type == Json_null; }
+    bool is_bool() const    { return m_type == Json_boolean; }
+    bool is_number() const  { return m_type == Json_int64 || m_type == Json_uint64 || m_type == Json_double; }
+    bool is_string() const  { return m_type == Json_string; }
+    bool is_object() const  { return m_type == Json_object; }
+    bool is_array() const   { return m_type == Json_array; }
     bool is_valid() const   { return m_type != Json_invalid; }
 
     // get value, if type does not match, throw JsonBadAccess
@@ -75,8 +75,8 @@ public:
     double              as_double() const;
     const char*         as_string() const;
     const JsonObject&   as_object() const;
-    JsonObject&			as_object();
-    const JsonArray&	as_array() const;   
+    JsonObject&         as_object();
+    const JsonArray&    as_array() const;   
     JsonArray&          as_array();
 
     // ditto, but return false if type does not match, never throw
@@ -191,7 +191,7 @@ protected:
         Json_scalar = 100,  // Scalar tag, for internal usage
         Json_string,        // JSON String
         Json_array,         // JSON Array
-        Json_object,	    // JSON Object
+        Json_object,        // JSON Object
     };
     union ValUnion
     {
@@ -201,9 +201,9 @@ protected:
         double      f64;
         JsonString* str;
         JsonArray*  ary;
-        JsonObject*	obj;
+        JsonObject* obj;
     };
-    int		    m_type;
+    int         m_type;
     ValUnion    m_value;
     JsonAlloc*  m_allocator;    // internal memory allocator
 
@@ -236,8 +236,8 @@ public:
     JsonElem* next_sibling()                { return m_pNext; }
 
     // get parent JSON Array
-    const JsonArray* parent() const	        { return m_parent; }
-    JsonArray* parent()						{ return m_parent; }
+    const JsonArray* parent() const         { return m_parent; }
+    JsonArray* parent()                     { return m_parent; }
 
 private:
     friend JsonAlloc;
@@ -258,13 +258,13 @@ public:
     // children traversal
     typedef detail::JXIterator<JsonElem> Iterator;          // forward iterator
     typedef detail::JXIterator<const JsonElem> CIterator;   // forward const iterator
-    Iterator begin()	            { return Iterator(m_slist.m_firstNode); }
-    Iterator end()			        { return Iterator(nullptr); }
-    CIterator begin() const	        { return CIterator(m_slist.m_firstNode); }
-    CIterator end() const	        { return CIterator(nullptr); }
+    Iterator begin()                { return Iterator(m_slist.m_firstNode); }
+    Iterator end()                  { return Iterator(nullptr); }
+    CIterator begin() const         { return CIterator(m_slist.m_firstNode); }
+    CIterator end() const           { return CIterator(nullptr); }
 
     // number of elements
-    int count() const		        { return m_count; }
+    int count() const               { return m_count; }
 
     // return the first element, return nullptr if array is empty 
     const JsonElem* first() const   { return m_slist.m_firstNode; }
@@ -382,12 +382,12 @@ public:
     void set_name( const std::string& name );
 
     // get next member in parent JSON Object
-    const JsonMember* next_sibling() const	{ return m_pNext; }
-    JsonMember* next_sibling()				{ return m_pNext; }
+    const JsonMember* next_sibling() const  { return m_pNext; }
+    JsonMember* next_sibling()              { return m_pNext; }
 
     // get parent JSON Object
-    const JsonObject* parent() const	    { return m_parent; }
-    JsonObject* parent()				    { return m_parent; }
+    const JsonObject* parent() const        { return m_parent; }
+    JsonObject* parent()                    { return m_parent; }
 
     // format JSON text, add to the tail of the output string, for internal use
     void format( std::string& );
@@ -406,9 +406,9 @@ private:
     JsonMember( const std::string& name, JsonObject* parent );
     ~JsonMember();
 
-    JsonString*	m_pName;    // member name
-    JsonMember*	m_pNext;    // next member in parent JSON Object
-    JsonObject*	m_parent;   // parent JSON Object
+    JsonString* m_pName;    // member name
+    JsonMember* m_pNext;    // next member in parent JSON Object
+    JsonObject* m_parent;   // parent JSON Object
 };
 
 // JSON Object
@@ -420,19 +420,19 @@ public:
     typedef detail::JXIterator<const JsonMember> CIterator; // forward const iterator
     Iterator begin()                { return Iterator(m_slist.m_firstNode); }
     Iterator end()                  { return Iterator(nullptr); }
-    CIterator begin() const			{ return CIterator(m_slist.m_firstNode); }
-    CIterator end() const			{ return CIterator(nullptr); }
+    CIterator begin() const         { return CIterator(m_slist.m_firstNode); }
+    CIterator end() const           { return CIterator(nullptr); }
 
     // number of members
-    int count() const			    { return m_count; }
+    int count() const               { return m_count; }
 
     // return the first member, return nullptr if empty 
-    const JsonMember* first() const	{ return m_slist.m_firstNode; }
-    JsonMember* first()				{ return m_slist.m_firstNode; }
+    const JsonMember* first() const { return m_slist.m_firstNode; }
+    JsonMember* first()             { return m_slist.m_firstNode; }
 
     // return the last member, return nullptr if empty 
-    const JsonMember* last() const	{ return m_slist.m_lastNode; }
-    JsonMember* last()				{ return m_slist.m_lastNode; }
+    const JsonMember* last() const  { return m_slist.m_lastNode; }
+    JsonMember* last()              { return m_slist.m_lastNode; }
 
     // find the desired member, return nullptr if failed
     // WARNING: if duplicate name exists, only return the first one.
@@ -551,8 +551,8 @@ enum class JsonStatus
 {
     Ok = 0,         // No Error
     Invalid,        // invalid JSON content or syntax
-    IOFailed,		// file read/write failed
-    Unsupported,	// unsupported (such as UTF-16 encoding)
+    IOFailed,       // file read/write failed
+    Unsupported,    // unsupported (such as UTF-16 encoding)
 };
 
 class JsonDoc : IrkNocopy

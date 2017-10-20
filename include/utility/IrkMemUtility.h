@@ -176,8 +176,8 @@ private:
 class MallocedBuf : IrkNocopy
 {
 public:
-    explicit MallocedBuf( void* pbuf = nullptr ) : m_Buf( pbuf ) {}	// manage existing buffer, take ownership
-    explicit MallocedBuf( size_t size )	// create new buffer
+    explicit MallocedBuf( void* pbuf = nullptr ) : m_Buf( pbuf ) {} // manage existing buffer, take ownership
+    explicit MallocedBuf( size_t size ) // create new buffer
     {
         m_Buf = checked_malloc( size );
     }

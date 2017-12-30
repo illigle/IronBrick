@@ -50,6 +50,11 @@ struct BoxTid<T*>
     static const uint32_t tid = TYPEID_PTR;
 };
 template<>
+struct BoxTid<decltype(nullptr)>
+{
+    static const uint32_t tid = TYPEID_PTR;
+};
+template<>
 struct BoxTid<bool>
 {
     static const uint32_t tid = TYPEID_BOOL;

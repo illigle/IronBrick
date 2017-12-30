@@ -41,7 +41,9 @@ class ValBox
     template<typename T>
     static constexpr uint32_t tidof()
     {
-        return detail::BoxTid<std::remove_cv_t<T>>::tid;
+        using NoCV_t = std::remove_cv_t<T>;
+        using NoRef_t = std::remove_reference_t<NoCV_t>;
+        return detail::BoxTid<NoRef_t>::tid;
     }
     template<typename T, bool>
     struct EmplaceHelper

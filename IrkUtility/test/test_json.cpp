@@ -83,30 +83,28 @@ TEST( Json, Create )
     rootAry += 2.0f;
     rootAry += "abc";
     rootAry += string("xyz");
-    JsonObject& jobj = rootAry.add( JsonEmptyObject{} );
+    rootAry += {-1, -2, -3, -4, -5, -6};
+    rootAry += std::make_tuple( "123", 123, true, nullptr, 101.23 );
+    JsonObject& jobj = rootAry.add_object();
     
     // element search
-    JsonElem* elem = rootAry.find( -1 );
-    EXPECT_EQ( nullptr, elem );
-    elem = rootAry.find( rootAry.count() );
-    EXPECT_EQ( nullptr, elem );
-    elem = rootAry.find( 3 );
-    EXPECT_TRUE( elem != nullptr && elem->is_number() );
+    JsonElem& elem = rootAry[3];
+    EXPECT_TRUE( elem.is_number() );
 
     // get element value
     int64_t val = 0;
-    EXPECT_EQ( 2, elem->as_int() );
-    EXPECT_EQ( 2, elem->as_uint() );
-    EXPECT_EQ( 2.0, elem->as_double() );
-    EXPECT_TRUE( elem->get( val ) );
+    EXPECT_EQ( 2, elem.as_int() );
+    EXPECT_EQ( 2, elem.as_uint() );
+    EXPECT_EQ( 2.0, elem.as_double() );
+    EXPECT_TRUE( elem.get( val ) );
     EXPECT_EQ( 2, val );
-    EXPECT_THROW( elem->as_string(), JsonBadAccess );
+    EXPECT_THROW( elem.as_string(), JsonBadAccess );
 
     // element assignment
-    *elem = 12;
-    EXPECT_EQ( 12, elem->as_uint() );
-    *elem = false;
-    EXPECT_FALSE( elem->as_bool() );
+    elem = 12;
+    EXPECT_EQ( 12, elem.as_uint() );
+    elem = false;
+    EXPECT_FALSE( elem.as_bool() );
     
     // array traversal, ranged-for
     const char* checkStr = "null string";
@@ -118,8 +116,8 @@ TEST( Json, Create )
         cnt++;
     }
     EXPECT_EQ( cnt, rootAry.count() );
-    elem = rootAry.first();
-    EXPECT_STREQ( checkStr, elem->as_string() );
+    JsonElem* child = rootAry.first();
+    EXPECT_STREQ( checkStr, child->as_string() );
 
     // array traversal, iterator
     int objCnt = 0;
@@ -136,7 +134,7 @@ TEST( Json, Create )
     jobj.add( "a", 'a' );
     jobj["path"] = "C:\\very-very-very-long-dir\\log.txt";
     jobj["speed"] = 3600.f;
-    jobj["person"] = JsonEmptyObject{};
+    jobj["person"] = JsonObject{};
     EXPECT_EQ( 5, jobj.count() );
 
     // delete member
@@ -151,7 +149,7 @@ TEST( Json, Create )
     JsonObject& person = pmemb->as_object();
     EXPECT_TRUE( person.count() == 0 );
     person.add( "phone-number", "1234567890" );
-    person.add( "address", "shenzhen-china" );
+    person += std::make_pair( "address", "shenzhen-china" );
     
     // object traversal
     int itemCnt = 0;
@@ -174,16 +172,16 @@ TEST( Json, Create )
         "name", "fat-man", 
         "age", 18,
         std::string("gender"), "male",
-        "empty", JsonEmptyObject{}
+        "empty", JsonObject{}
     );
     rootObj.adds( "moneny", 99999999 );
     rootObj["name"] = "slim";
     rootObj["address"] = u8"深圳";
-    rootObj["title"] = JsonEmptyArray{};
+    rootObj["title"] = JsonArray{};
     JsonArray& title = rootObj["title"].as_array();
-    title.adds( 1, "boss", 2, "manager", JsonEmptyObject{} );
+    title.adds( 1, "boss", 2, "manager", JsonObject{} );
 
-    JsonArray& ary = rootObj.add( "details", JsonEmptyArray{} );
+    JsonArray& ary = rootObj.add_array( "details" );
     ary.adds( 1, -2, 3.1415926, nullptr, true, "c-string", string("std::string") );
     ary.add( u8"小小" );
     ary += std::make_tuple( 101, "abc", 99.99 );
@@ -193,10 +191,45 @@ TEST( Json, Create )
     doc.pretty_dump_file( outfile2.c_str() );
 }
 
+TEST( Json, Create2 )
+{
+    JsonMempoolAllocator allocator;
+
+    JsonObject obj( &allocator );
+    obj.add( "1", 1 );
+    obj.add( std::make_pair( "2", 2.0 ) );
+    obj += std::make_pair( "3", true );
+    obj.adds(
+        "4", "4000",
+        "5", nullptr,
+        "6", JsonObject{},
+        "7", JsonArray{}
+    );
+
+    std::string text1 = json_dump( obj );
+    JsonValue val = json_parse( text1.c_str() );
+    EXPECT_TRUE( val.is_object() );
+    std::string text2 = json_dump( val );
+    EXPECT_EQ( text1, text2 );
+
+    JsonArray ary( &allocator );
+    ary.add( 1 );
+    ary += 2.0;
+    ary += {"123", "456", "789"};
+    ary += std::make_tuple( -1, -2.9, "xyz", true, nullptr, JsonObject{} );
+    ary.resize( 16 );
+
+    text1 = json_pretty_dump( ary );
+    val = json_parse( text1.c_str() );
+    EXPECT_TRUE( val.is_array() );
+    text2 = json_pretty_dump( val );
+    EXPECT_EQ( text1, text2 );
+}
+
 static void parse_json_file( const FsPath& srcfile )
 {
     JsonDoc doc;
-    if( doc.parse_file( srcfile.c_str() ) != JsonStatus::Ok )
+    if( doc.load_file( srcfile.c_str() ) < 0 )
     {
         // only fail*.json should failed
         string filename = srcfile.filename();

@@ -12,7 +12,7 @@
 */
 
 #include <errno.h>
-#include "IrkMemPool.h"
+#include <math.h>
 #include "IrkStringUtility.h"
 #include "IrkCFile.h"
 #include "IrkJSON.h"
@@ -21,64 +21,23 @@ using std::string;
 
 namespace irk {
 
-// memory allocator used to allocate JSON String, Element, Member, Array, Object
-class JsonAlloc
+// default JSON allocator
+static JsonAllocator* GetDefaultAllocator()
 {
-public:
-    JsonAlloc() : m_mpool(16*1024) {}
-
-    // create new object
-    template<class Ty, class... Args>
-    Ty* create( Args&&... args )
-    {
-        void* ptr = m_mpool.alloc( sizeof(Ty), alignof(Ty) );
-        return ::new(ptr) Ty( std::forward<Args>(args)... );    // inplace new
-    }
-    // delete object
-    template<class Ty>
-    void trash( Ty* ptr )
-    {
-        if( ptr )
-        {
-            ptr->~Ty();
-            m_mpool.dealloc( ptr, sizeof(Ty) );
-        }
-    }
-
-    // allocate a memory block
-    void* alloc( size_t size, size_t alignment = sizeof(void*) )
-    {
-        return m_mpool.alloc( size, alignment );
-    }
-    // deallocate memory block returned from alloc()
-    void dealloc( void* ptr, size_t size )
-    {
-        m_mpool.dealloc( ptr, size );
-    }
-    // real buffer capacity for the requested size
-    size_t bucket_size( size_t size ) const
-    {
-        return m_mpool.bucket_size( size );
-    }
-
-    // release all memory
-    void clear()    
-    { 
-        m_mpool.clear();
-    }
-private:
-    MemPool m_mpool;
-};
+    static JsonDefaultAllocator s_DefaultAllocator;
+    return &s_DefaultAllocator;
+}
 
 //======================================================================================================================
 // JSON String
 
-class JsonString
+class JsonString : IrkNocopy
 {
-    static const int kInnerSize = 16;   // for small string optimization
+    static constexpr int kInnerSize = 16;   // for small string optimization
 public:
-    explicit JsonString( JsonAlloc* alloc ) : m_allocator(alloc), m_blksize(kInnerSize) {}
-    explicit JsonString( const char* str, int len, JsonAlloc* alloc ) : JsonString(alloc)
+    explicit JsonString( JsonAllocator* alloc ) : m_alloc(alloc), m_blksize(kInnerSize) 
+    {}
+    explicit JsonString( const char* str, int len, JsonAllocator* alloc ) : JsonString(alloc)
     {
         this->assign( str, len );
     }
@@ -100,25 +59,15 @@ public:
     // clear and allocate buffer of at least <size> bytes
     char* alloc( int size );
 
-    // parse and fill
-    int parse( const char* text );
+    // parse and load from JSON text
+    int load( const char* text );
 
     // return allocator
-    JsonAlloc* allocator()  { return m_allocator; }
-
-    // create new string from allocator
-    static JsonString* make( JsonAlloc* alloc )
-    {
-        return alloc->create<JsonString>( alloc );
-    }
-    static JsonString* make( const char* str, int len, JsonAlloc* alloc )
-    {
-        return alloc->create<JsonString>( str, len, alloc );
-    }
+    JsonAllocator* allocator() const { return m_alloc; }
 
 private:
-    JsonAlloc*  m_allocator;            // extern block's allocator
-    int32_t     m_blksize;              // memory block size
+    JsonAllocator*  m_alloc;            // extern block's allocator
+    int32_t         m_blksize;          // memory block size
     union {
         char    m_inbuf[kInnerSize];    // inner buffer for small string optimization
         char*   m_block;                // external memory block
@@ -130,7 +79,7 @@ inline void JsonString::clear()
 {
     if( m_blksize > kInnerSize )   // using external buffer
     {
-        m_allocator->dealloc( m_block, (size_t)m_blksize );
+        m_alloc->dealloc( m_block, (size_t)m_blksize );
         m_blksize = kInnerSize;
         m_block = nullptr;
     }
@@ -142,10 +91,8 @@ inline char* JsonString::alloc( int size )
     if( size > m_blksize )
     {
         this->clear();
-
-        size_t capacity = m_allocator->bucket_size( size );
-        m_block = (char*)m_allocator->alloc( capacity );
-        m_blksize = (int)capacity;
+        m_block = (char*)m_alloc->alloc( size, sizeof(void*) );
+        m_blksize = size;
         assert( m_blksize > kInnerSize );
         return m_block;
     }
@@ -171,23 +118,100 @@ inline void JsonString::assign( const char* str, int len )
 //======================================================================================================================
 // JSON general value
 
-JsonValue::JsonValue( JsonValue&& other ) noexcept
+// construct a JSON Null value
+JsonValue::JsonValue( std::nullptr_t )
+{
+    m_type = Json_null;
+    m_alloc = GetDefaultAllocator();
+}
+JsonValue::JsonValue( std::nullptr_t, JsonAllocator* alloc )
+{
+    m_type = Json_null;
+    m_alloc = alloc;    // user must keep allocator alive during the lifetime of this object
+}
+
+// construct an empty JSON value, empty JSON value is in invalid state
+JsonValue::JsonValue()
+{
+    m_type = Json_empty;
+    m_alloc = GetDefaultAllocator();
+}
+JsonValue::JsonValue( JsonAllocator* alloc )
+{
+    m_type = Json_empty;
+    m_alloc = alloc;    // user must keep allocator alive during the lifetime of this object
+}
+
+JsonValue::JsonValue( const JsonValue& other )
+{
+    m_alloc = other.m_alloc;
+
+    if( other.m_type < Json_scalar )
+    {
+        m_value = other.m_value;
+    }
+    else if( other.m_type == Json_string )
+    {
+        m_value.str = m_alloc->create<JsonString>( other.m_value.str->data(), -1, m_alloc );
+    }
+    else if( other.m_type == Json_object )
+    {
+        m_value.obj = m_alloc->create<JsonObject>( *other.m_value.obj );
+    }
+    else if( other.m_type == Json_array )
+    {
+        m_value.ary = m_alloc->create<JsonArray>( *other.m_value.ary );
+    }
+
+    m_type = other.m_type;
+}
+
+JsonValue::JsonValue( JsonValue&& other )
 {
     m_type = other.m_type;
     m_value = other.m_value;
-    m_allocator = other.m_allocator;
-    other.m_type = Json_invalid;
+    m_alloc = other.m_alloc;
+    other.m_type = Json_empty;
 }
 
-JsonValue& JsonValue::operator=( JsonValue&& other ) noexcept
+JsonValue& JsonValue::operator=( const JsonValue& other )
 {
     if( this != &other )    // protect from the mad
+    {
+        if( other.m_type < Json_scalar )
+        {
+            this->clear();
+            m_value = other.m_value;
+            m_type = other.m_type;
+        }
+        else if( other.m_type == Json_string )
+        {
+            this->set( other.m_value.str->data() );
+        }
+        else if( other.m_type == Json_object )
+        {
+            this->set( *other.m_value.obj );
+        }
+        else if( other.m_type == Json_array )
+        {
+            this->set( *other.m_value.ary );
+        }
+    }
+    return *this;
+}
+
+JsonValue& JsonValue::operator=( JsonValue&& other )
+{
+    if( m_alloc != other.m_alloc )  // different allocator, can't move, copy instead
+    {
+        *this = other;
+    }
+    else if( this != &other )       // protect from the mad
     {
         this->clear();
         m_type = other.m_type;
         m_value = other.m_value;
-        m_allocator = other.m_allocator;
-        other.m_type = Json_invalid;
+        other.m_type = Json_empty;
     }
     return *this;
 }
@@ -197,22 +221,23 @@ void JsonValue::clear()
 {
     if( m_type > Json_scalar )
     {
-        assert( m_allocator != nullptr );
-
         if( m_type == Json_string )
         {
-            m_allocator->trash( m_value.str );
+            assert( m_alloc == m_value.str->allocator() );
+            m_alloc->trash( m_value.str );
         }
         else if( m_type == Json_object )
         {
-            m_allocator->trash( m_value.obj );
+            assert( m_alloc == m_value.obj->allocator() );
+            m_alloc->trash( m_value.obj );
         }
         else if( m_type == Json_array )
         {
-            m_allocator->trash( m_value.ary );
+            assert( m_alloc == m_value.ary->allocator() );
+            m_alloc->trash( m_value.ary );
         }
     }
-    m_type = Json_invalid;
+    m_type = Json_empty;
 }
 
 bool JsonValue::as_bool() const
@@ -629,7 +654,7 @@ bool JsonValue::get( JsonArray*& outAry )
     return false;
 }
 
-// set string, str must be null-terminated if len < 0
+// assign string, str must be null-terminated if len < 0
 void JsonValue::set( const char* str, int len )
 {
     if( m_type == Json_string )     // already contains string
@@ -638,15 +663,30 @@ void JsonValue::set( const char* str, int len )
     }
     else
     {
-        assert( m_allocator );
         this->clear();
-        m_value.str = JsonString::make( str, len, m_allocator );
+        m_value.str = m_alloc->create<JsonString>( str, len, m_alloc );
         m_type = Json_string;
     }
 }
 void JsonValue::set( const std::string& str )
 {
     this->set( str.c_str(), (int)str.length() );
+}
+
+// assign JSON Object, return reference to the new Object
+JsonObject& JsonValue::set( const JsonObject& obj )
+{
+    this->make_empty_object();
+    *m_value.obj = obj;
+    return *m_value.obj;
+}
+
+// assign JSON Array, return reference to the new Array
+JsonArray& JsonValue::set( const JsonArray& ary )
+{
+    this->make_empty_array();
+    *m_value.ary = ary;
+    return *m_value.ary;
 }
 
 // make as empty JSON String, return reference to the String
@@ -658,9 +698,8 @@ JsonString& JsonValue::make_empty_string()
     }
     else
     {
-        assert( m_allocator );
         this->clear();
-        m_value.str = JsonString::make( m_allocator );
+        m_value.str = m_alloc->create<JsonString>( m_alloc );
         m_type = Json_string;
     }
     return *m_value.str;
@@ -675,10 +714,9 @@ JsonObject& JsonValue::make_empty_object()
     }
     else
     {
-        assert( m_allocator );
         this->clear();
+        m_value.obj = m_alloc->create<JsonObject>( m_alloc );
         m_type = Json_object;
-        m_value.obj = m_allocator->create<JsonObject>( m_allocator );
     }
     return *m_value.obj;
 }
@@ -692,10 +730,9 @@ JsonArray& JsonValue::make_empty_array()
     }
     else
     {
-        assert( m_allocator );
         this->clear();
+        m_value.ary = m_alloc->create<JsonArray>( m_alloc );
         m_type = Json_array;
-        m_value.ary = m_allocator->create<JsonArray>( m_allocator );
     }
     return *m_value.ary;
 }
@@ -707,6 +744,69 @@ JsonElem::JsonElem(JsonArray* parent)
     : JsonValue(nullptr, parent->allocator()), m_pNext(nullptr), m_parent(parent)
 {}
 
+JsonArray::JsonArray()
+{
+    m_alloc = GetDefaultAllocator();
+    m_count = 0;
+}
+
+// NOTE: user must keep allocator alive during the lifetime of this object
+JsonArray::JsonArray( JsonAllocator* alloc )
+{
+    m_alloc = alloc;
+    m_count = 0;
+}
+
+JsonArray::JsonArray( const JsonArray& other )
+{
+    m_alloc = other.m_alloc;
+    m_count = 0;
+    for( const JsonValue& val : other )
+        this->add( val );
+}
+
+JsonArray::JsonArray( JsonArray&& other )
+{
+    m_alloc = other.m_alloc;
+    m_count = other.m_count;
+    m_slist.m_firstNode = other.m_slist.m_firstNode;
+    m_slist.m_lastNode = other.m_slist.m_lastNode;
+    other.m_count = 0;
+    other.m_slist.clear();
+}
+
+JsonArray& JsonArray::operator=( const JsonArray& other )
+{
+    if( this != &other )
+    {
+        this->clear();
+        for( const JsonValue& val : other )
+            this->add( val );
+    }
+    return *this;
+}
+
+JsonArray& JsonArray::operator=( JsonArray&& other )
+{
+    if( this != &other )
+    {
+        if( m_alloc != other.m_alloc )  // allocator diff, can't move
+        {
+            *this = other;
+        }
+        else
+        {
+            this->clear();
+            m_count = other.m_count;
+            m_slist.m_firstNode = other.m_slist.m_firstNode;
+            m_slist.m_lastNode = other.m_slist.m_lastNode;
+            other.m_count = 0;
+            other.m_slist.clear();
+        }
+    }
+    return *this;
+}
+
 // delete all elements
 void JsonArray::clear()
 {
@@ -714,28 +814,40 @@ void JsonArray::clear()
     while( curr )
     {
         JsonElem* next = curr->next_sibling();
-        m_allocator->trash( curr );
+        m_alloc->trash( curr );
         curr = next;
     }
     m_count = 0;
     m_slist.clear();
 }
 
-// get idx'th element, return nullptr if failed
-// WARNING: O(N) sequential search, for traversal use iterator instead
-JsonElem* JsonArray::find( int idx )
+// resize the array, if the current count is less than count, additional JSON Null value are appended
+void JsonArray::resize( int cnt )
 {
-    return m_slist.find( idx );
-}
-const JsonElem* JsonArray::find( int idx ) const
-{
-    return m_slist.find( idx );
+    if( cnt < m_count )
+    {
+        JsonElem* elem = m_slist.shrink( cnt );
+        while( elem )
+        {
+            JsonElem* next = elem->next_sibling();
+            m_alloc->trash( elem );
+            elem = next;
+        }
+        m_count = cnt;
+    }
+    else
+    {
+        for( int i = m_count; i < cnt; i++ )
+        {
+            this->add( nullptr );
+        }
+    }
 }
 
 // add a null element to the tail of array, return reference to the new element
 JsonElem& JsonArray::add( std::nullptr_t )
 {
-    JsonElem* pElem = m_allocator->create<JsonElem>( this );
+    JsonElem* pElem = m_alloc->create<JsonElem>( this );
     m_slist.push_back( pElem );
     m_count++;
     return *pElem;
@@ -747,7 +859,7 @@ bool JsonArray::erase( int idx )
     JsonElem* victim = m_slist.remove( idx );
     if( victim )
     {
-        m_allocator->trash( victim );
+        m_alloc->trash( victim );
         m_count--;
         return true;
     }
@@ -758,7 +870,7 @@ bool JsonArray::erase( JsonElem& elem )
     JsonElem* victim = m_slist.remove( &elem );
     if( victim )
     {
-        m_allocator->trash( victim );
+        m_alloc->trash( victim );
         m_count--;
         return true;
     }
@@ -768,27 +880,24 @@ bool JsonArray::erase( JsonElem& elem )
 //======================================================================================================================
 // JSON Members in JSON Object
 
-JsonMember::JsonMember( JsonObject* parent ) 
-    : JsonValue(nullptr, parent->allocator()), m_pName(nullptr), m_pNext(nullptr), m_parent(parent)
-{
-    m_pName = JsonString::make( parent->allocator() );
-}
-
 JsonMember::JsonMember( const char* name, JsonObject* parent )
     : JsonValue(nullptr, parent->allocator()), m_pName(nullptr), m_pNext(nullptr), m_parent(parent)
 {
-    m_pName = JsonString::make( name, -1, parent->allocator() );
+    if( name )
+        m_pName = m_alloc->create<JsonString>( name, -1, m_alloc );
+    else
+        m_pName = m_alloc->create<JsonString>( m_alloc );
 }
 
 JsonMember::JsonMember( const std::string& name, JsonObject* parent )
     : JsonValue(nullptr, parent->allocator()), m_pName(nullptr), m_pNext(nullptr), m_parent(parent)
 {
-    m_pName = JsonString::make( name.c_str(), (int)name.length(), parent->allocator() );
+    m_pName = m_alloc->create<JsonString>( name.c_str(), (int)name.length(), m_alloc );
 }
 
 JsonMember::~JsonMember()
 {
-    m_allocator->trash( m_pName );
+    m_alloc->trash( m_pName );
 }
 
 // get name
@@ -810,6 +919,69 @@ void JsonMember::set_name( const std::string& name )
 //======================================================================================================================
 // JSON Object
 
+JsonObject::JsonObject()
+{
+    m_alloc = GetDefaultAllocator();
+    m_count = 0;
+}
+
+// NOTE: user must keep allocator alive during the lifetime of this object
+JsonObject::JsonObject( JsonAllocator* alloc )
+{
+    m_alloc = alloc;
+    m_count = 0;
+}
+
+JsonObject::JsonObject( const JsonObject& other )
+{
+    m_alloc = other.m_alloc;
+    m_count = 0;
+    for( const auto& memb : other )
+        this->add( memb.name(), (const JsonValue&)memb );
+}
+
+JsonObject::JsonObject( JsonObject&& other )
+{
+    m_alloc = other.m_alloc;
+    m_count = other.m_count;
+    m_slist.m_firstNode = other.m_slist.m_firstNode;
+    m_slist.m_lastNode = other.m_slist.m_lastNode;
+    other.m_count = 0;
+    other.m_slist.clear();
+}
+
+JsonObject& JsonObject::operator=( const JsonObject& other )
+{
+    if( this != &other )
+    {
+        this->clear();
+        for( const auto& memb : other )
+            this->add( memb.name(), (const JsonValue&)memb );
+    }
+    return *this;
+}
+
+JsonObject& JsonObject::operator=( JsonObject&& other )
+{
+    if( this != &other )
+    {
+        if( m_alloc != other.m_alloc )  // allocator diff, can't move
+        {
+            *this = other;
+        }
+        else
+        {
+            this->clear();
+            m_count = other.m_count;
+            m_slist.m_firstNode = other.m_slist.m_firstNode;
+            m_slist.m_lastNode = other.m_slist.m_lastNode;
+            other.m_count = 0;
+            other.m_slist.clear();
+        }
+    }
+    return *this;
+}
+
 // delete all members
 void JsonObject::clear()
 {
@@ -817,7 +989,7 @@ void JsonObject::clear()
     while( curr )
     {
         JsonMember* next = curr->next_sibling();
-        m_allocator->trash( curr );
+        m_alloc->trash( curr );
         curr = next;
     }
     m_count = 0;
@@ -845,23 +1017,16 @@ const JsonMember* JsonObject::find( const std::string& name ) const
 }
 
 // add null member to the obj, return reference to the new member
-JsonMember& JsonObject::add_null()
-{
-    JsonMember* pmemb = m_allocator->create<JsonMember>( this );
-    m_slist.push_back( pmemb );
-    m_count++;
-    return *pmemb;
-}
 JsonMember& JsonObject::add( const char* name, std::nullptr_t )
 {
-    JsonMember* pmemb = m_allocator->create<JsonMember>( name, this );
+    JsonMember* pmemb = m_alloc->create<JsonMember>( name, this );
     m_slist.push_back( pmemb );
     m_count++;
     return *pmemb;
 }
 JsonMember& JsonObject::add( const std::string& name, std::nullptr_t )
 {
-    JsonMember* pmemb = m_allocator->create<JsonMember>( name, this );
+    JsonMember* pmemb = m_alloc->create<JsonMember>( name, this );
     m_slist.push_back( pmemb );
     m_count++;
     return *pmemb;
@@ -873,7 +1038,7 @@ bool JsonObject::erase( const char* name )
     JsonMember* victim = m_slist.remove( [name](JsonMember* m){ return strcmp(m->name(), name)==0; } );
     if( victim )
     {
-        m_allocator->trash( victim );
+        m_alloc->trash( victim );
         m_count--;
         return true;
     }
@@ -884,7 +1049,7 @@ bool JsonObject::erase( JsonMember& member )
     JsonMember* victim = m_slist.remove( &member );
     if( victim )
     {
-        m_allocator->trash( victim );
+        m_alloc->trash( victim );
         m_count--;
         return true;
     }
@@ -938,7 +1103,7 @@ static void to_json_text( const char* str, string& dst )
 }
 
 // to JSON text, add to the tail of the <outStr>
-void JsonValue::format( std::string& outStr )
+void JsonValue::dump( std::string& outStr ) const
 {
     constexpr int bufsize = 80;
     char sbuf[bufsize];
@@ -960,7 +1125,10 @@ void JsonValue::format( std::string& outStr )
         outStr += sbuf;
         break;
     case Json_double:
-        str_format( sbuf, bufsize, "%0.9g", m_value.f64 );
+        if( ::fabs(m_value.f64) < 1.0e7)
+            str_format( sbuf, bufsize, "%0.7f", m_value.f64 );
+        else
+            str_format( sbuf, bufsize, "%0.15e", m_value.f64 );
         outStr += sbuf;
         break;
     case Json_string:
@@ -969,104 +1137,79 @@ void JsonValue::format( std::string& outStr )
         outStr += '\"';
         break;
     case Json_object:
-        m_value.obj->format( outStr );
+        m_value.obj->dump( outStr );
         break;
     case Json_array:
-        m_value.ary->format( outStr );
+        m_value.ary->dump( outStr );
         break;
     default:
-        break;
-    }
-}
-
-// to JSON text, add to the tail of the <outStr>
-void JsonValue::format( std::string& outStr, int indent )
-{
-    constexpr int bufsize = 80;
-    char sbuf[bufsize];
-
-    switch( m_type )
-    {
-    case Json_null:
+        assert( false );    // empty value is invalid
         outStr += "null";
         break;
-    case Json_boolean:
-        outStr += m_value.flag ? "true" : "false";
-        break;
-    case Json_int64:
-        int_to_str( m_value.i64, sbuf, bufsize );
-        outStr += sbuf;
-        break;
-    case Json_uint64:
-        int_to_str( m_value.u64, sbuf, bufsize );
-        outStr += sbuf;
-        break;
-    case Json_double:
-        str_format( sbuf, bufsize, "%0.9g", m_value.f64 );
-        outStr += sbuf;
-        break;
-    case Json_string:
-        outStr += '\"';
-        to_json_text( m_value.str->data(), outStr );
-        outStr += '\"';
-        break;
+    }
+}
+
+// to JSON text, add to the tail of the <outStr>
+void JsonValue::pretty_dump( std::string& outStr, int indent ) const
+{
+    switch( m_type )
+    {
     case Json_object:
-        m_value.obj->format( outStr, indent );
+        m_value.obj->pretty_dump( outStr, indent );
         break;
     case Json_array:
-        m_value.ary->format( outStr, indent );
+        m_value.ary->pretty_dump( outStr, indent );
         break;
     default:
+        this->dump( outStr );
         break;
     }
 }
 
 // to JSON text, add to the tail of the <outStr>
-void JsonMember::format( std::string& outStr )
+void JsonMember::dump( std::string& outStr ) const
 {
     outStr += '\"';
     to_json_text( m_pName->data(), outStr );
     outStr += "\": ";
-    JsonValue::format( outStr );
+    JsonValue::dump( outStr );
 }
 
 // to JSON text, add to the tail of the <outStr>
-void JsonMember::format( std::string& outStr, int indent )
+void JsonMember::pretty_dump( std::string& outStr, int indent ) const
 {
     outStr += '\"';
     to_json_text( m_pName->data(), outStr );
     outStr += "\": ";
-    JsonValue::format( outStr, indent );
+    JsonValue::pretty_dump( outStr, indent );
 }
 
 // to JSON text, add to the tail of the <outStr>
-void JsonArray::format( std::string& outStr )
+void JsonArray::dump( std::string& outStr ) const
 {
-    outStr += "[\n";
+    outStr += '[';
 
     JsonElem* curr = m_slist.m_firstNode;
     if( curr )
     {
         // the first element
-        curr->format( outStr );
+        curr->dump( outStr );
         curr = curr->next_sibling();
 
         // other elements
         while( curr )
         {
-            outStr += ",\n";
-            curr->format( outStr );
+            outStr += ',';
+            curr->dump( outStr );
             curr = curr->next_sibling();
         }
-
-        outStr += '\n';
     }
 
-    outStr += "]";
+    outStr += ']';
 }
 
 // to JSON text, add to the tail of the <outStr>
-void JsonArray::format( std::string& outStr, int indent )
+void JsonArray::pretty_dump( std::string& outStr, int indent ) const
 {
     outStr += "[\n";
 
@@ -1077,7 +1220,7 @@ void JsonArray::format( std::string& outStr, int indent )
 
         // the first element
         outStr.append( indent2, ' ' );
-        curr->format( outStr, indent2 );
+        curr->pretty_dump( outStr, indent2 );
         curr = curr->next_sibling();
 
         // other elements
@@ -1085,7 +1228,7 @@ void JsonArray::format( std::string& outStr, int indent )
         {
             outStr += ",\n";
             outStr.append( indent2, ' ' );
-            curr->format( outStr, indent2 );
+            curr->pretty_dump( outStr, indent2 );
             curr = curr->next_sibling();
         }
 
@@ -1097,33 +1240,31 @@ void JsonArray::format( std::string& outStr, int indent )
 }
 
 // to JSON text, add to the tail of the <outStr>
-void JsonObject::format( std::string& outStr )
+void JsonObject::dump( std::string& outStr ) const
 {
-    outStr += "{\n";
+    outStr += '{';
 
     JsonMember* curr = m_slist.m_firstNode;
     if( curr )
     {
         // the first element
-        curr->format( outStr );
+        curr->dump( outStr );
         curr = curr->next_sibling();
 
         // other elements
         while( curr )
         {
-            outStr += ",\n";
-            curr->format( outStr );
+            outStr += ',';
+            curr->dump( outStr );
             curr = curr->next_sibling();
         }
-
-        outStr += '\n';
     }
 
-    outStr += "}";
+    outStr += '}';
 }
 
 // to JSON text, add to the tail of the <outStr>
-void JsonObject::format( std::string& outStr, int indent )
+void JsonObject::pretty_dump( std::string& outStr, int indent ) const
 {
     outStr += "{\n";
 
@@ -1134,7 +1275,7 @@ void JsonObject::format( std::string& outStr, int indent )
 
         // the first member
         outStr.append( indent2, ' ' );
-        curr->format( outStr, indent2 );
+        curr->pretty_dump( outStr, indent2 );
         curr = curr->next_sibling();
 
         // other member
@@ -1142,7 +1283,7 @@ void JsonObject::format( std::string& outStr, int indent )
         {
             outStr += ",\n";
             outStr.append( indent2, ' ' );
-            curr->format( outStr, indent2 );
+            curr->pretty_dump( outStr, indent2 );
             curr = curr->next_sibling();
         }
 
@@ -1217,8 +1358,8 @@ static int json_escape_to_utf8( const char* text, char* dst )
     }
 }
 
-// parse and fill from JSON text, return character count consumed, return -1 if failed
-int JsonString::parse( const char* text )
+// parse and load from JSON text, return character count consumed, return -1 if failed
+int JsonString::load( const char* text )
 {
     // skip \"
     assert( text[0] == '\"' );
@@ -1344,28 +1485,28 @@ int JsonString::parse( const char* text )
     return srcLen + 2;
 }
 
-// parse and fill from JSON text, return character count consumed, return -1 if failed
-int JsonMember::parse( const char* text, int depth )
+// parse and load from JSON text, return character count consumed, return -1 if failed
+int JsonMember::load( const char* text, int depth )
 {
     int len = 0;
 
-    // fill member's name
+    // parse member's name
     while( IS_SPACE( text[len] ) )  // skip space
         len++;
     if( text[len] != '\"' )         // invalid, must be string
         return -1;
-    int used = m_pName->parse( text + len );
+    int used = m_pName->load( text + len );
     if( used > 0 )
         len += used;
     else
         return -1;      // parsing failed
 
-    // fill member's value
+    // parse member's value
     while( IS_SPACE( text[len] ) )  // skip space
         len++;
     if( text[len++] != ':' )        // skip colon
         return -1;
-    used = JsonValue::parse( text + len, depth );
+    used = JsonValue::load( text + len, depth );
     if( used > 0 )
         len += used;
     else
@@ -1374,16 +1515,27 @@ int JsonMember::parse( const char* text, int depth )
     return len;
 }
 
-// parse and fill from JSON text, return character count consumed, return -1 if failed
-int JsonArray::parse( const char* text, int depth )
+// parse and load from JSON text, return character count consumed, return -1 if failed
+int JsonArray::load( const char* text, int depth )
 {
+    // clear old elements if exists
+    if( m_count > 0 )
+        this->clear();
+
     // skip leading white-space
-    assert( text[0] == '[' );
-    int len = 1;
+    int len = 0;
     while( IS_SPACE( text[len] ) )
         len++;
 
-    // check empty array
+    // is JSON Array
+    if( text[len++] != '[' )
+        return -1;
+
+    // skip white-space
+    while( IS_SPACE( text[len] ) )
+        len++;
+
+    // check empty JSON Array
     if( text[len] == ']' )
         return len + 1;
 
@@ -1396,8 +1548,8 @@ int JsonArray::parse( const char* text, int depth )
         // add emtpy element to the array
         JsonElem& elem = this->add( nullptr );
 
-        // parse/fill element
-        int used = elem.parse( text + len, depth );
+        // parse/load element
+        int used = elem.load( text + len, depth );
         if( used > 0 )
             len += used;
         else
@@ -1411,23 +1563,34 @@ int JsonArray::parse( const char* text, int depth )
         else if( text[len] == ']' )     // end of array
             return len + 1;
         else
-            return -1;
+            break;  // parsing failed
     }
 
     this->clear();
     return -1;
 }
 
-// parse and fill from JSON text, return character count consumed, return -1 if failed
-int JsonObject::parse( const char* text, int depth )
+// parse and load from JSON text, return character count consumed, return -1 if failed
+int JsonObject::load( const char* text, int depth )
 {
+    // clear old members if exists
+    if( m_count > 0 )
+        this->clear();
+
     // skip leading white-space
-    assert( text[0] == '{' );
-    int len = 1;
+    int len = 0;
     while( IS_SPACE( text[len] ) )
         len++;
 
-    // check empty obj
+    // is JSON Object
+    if( text[len++] != '{' )
+        return -1;
+
+    // skip white-space
+    while( IS_SPACE( text[len] ) )
+        len++;
+
+    // check empty JSON Object
     if( text[len] == '}' )
         return len + 1;
 
@@ -1438,10 +1601,10 @@ int JsonObject::parse( const char* text, int depth )
     while( text[len] != 0 )
     {
         // add empty member to the obj
-        JsonMember& member = this->add_null();
+        JsonMember& member = this->add(nullptr, nullptr);
 
-        // parse/fill member
-        int used = member.parse( text + len, depth );
+        // parse/load member
+        int used = member.load( text + len, depth );
         if( used > 0 )
             len += used;
         else
@@ -1455,51 +1618,16 @@ int JsonObject::parse( const char* text, int depth )
         else if( text[len] == '}' )     // end of obj
             return len + 1;
         else
-            return -1;
+            break;  // parsing failed
     }
 
-    // parsing failed
     this->clear();
     return -1;
 }
 
-// parse JSON Number, return character count consumed, return -1 if failed
-int JsonValue::parse_number( const char* text )
+// parse and load from JSON text, return character count consumed, return -1 if failed
+int JsonValue::load( const char* text, int depth )
 {
-    assert( m_type == Json_invalid || m_type == Json_null );
-    const char* end = text;
-
-    // try to parse interger first
-    int64_t i64 = ::strtoll( text, (char**)&end, 10 );
-
-    if( *end == '.' || *end == 'e' || *end == 'E' ) // float number, re-parse
-    {
-        double f64 = ::strtod( text, (char**)&end );
-        m_type = Json_double;
-        m_value.f64 = f64;
-    }
-    else
-    {
-        if( i64 == INT64_MAX && text[0] != '-' && errno == ERANGE ) // interger overflow
-        {
-            m_type = Json_uint64;
-            m_value.u64 = ::strtoull( text, (char**)&end, 10 );
-        }
-        else
-        {
-            m_type = Json_int64;
-            m_value.i64 = i64;
-        }
-    }
-
-    return static_cast<int>(end - text);
-}
-
-// parse JSON value, return character count consumed, return -1 if failed
-int JsonValue::parse( const char* text, int depth )
-{
-    assert( m_type == Json_invalid || m_type == Json_null );
-
     // skip leading white-space
     int len = 0;
     while( IS_SPACE( *text ) )
@@ -1508,27 +1636,10 @@ int JsonValue::parse( const char* text, int depth )
         len++;
     }
 
-    if( *text == '-' || (*text >= '0' && *text <= '9') )    // number
-    {
-        int used = this->parse_number( text );
-        if( used > 0 )
-            len += used;
-        else
-            len = -1;
-    }
-    else if( *text == '\"' )    // string
-    {
-        JsonString& str = this->make_empty_string();
-        int used = str.parse( text );
-        if( used > 0 )
-            len += used;
-        else
-            len = -1;
-    }
-    else if( *text == '{' )     // JSON Object
+    if( *text == '{' )          // JSON Object
     {
         JsonObject& obj = this->make_empty_object();
-        int used = obj.parse( text, depth );
+        int used = obj.load( text, depth );
         if( used > 0 )
             len += used;
         else
@@ -1537,32 +1648,78 @@ int JsonValue::parse( const char* text, int depth )
     else if( *text == '[' )     // JSON Array
     {
         JsonArray& ary = this->make_empty_array();
-        int used = ary.parse( text, depth );
+        int used = ary.load( text, depth );
         if( used > 0 )
             len += used;
         else
             len = -1;
     }
-    else if( strncmp( text, "true", 4 )==0 )
+    else if( *text == '\"' )    // string
     {
-        m_value.flag = true;
-        m_type = Json_boolean;
-        len += 4;
+        JsonString& str = this->make_empty_string();
+        int used = str.load( text );
+        if( used > 0 )
+            len += used;
+        else
+            len = -1;
     }
-    else if( strncmp( text, "false", 5 )==0 )
+    else
     {
-        m_value.flag = false;
-        m_type = Json_boolean;
-        len += 5;
-    }
-    else if( strncmp( text, "null", 4 )==0 )
-    {
-        m_type = Json_null;
-        len += 4;
-    }
-    else    // unknow value
-    {
-        len = -1;
+        // clear old value
+        this->clear();
+
+        if( *text == '-' || IS_DIGIT(*text) )   // number
+        {
+            // try to parse interger first
+            const char* end = nullptr;
+            int64_t i64 = ::strtoll( text, (char**)&end, 10 );
+            if( *end == '.' || *end == 'e' || *end == 'E' )     // float number, re-parse
+            {
+                double f64 = ::strtod( text, (char**)&end );
+                m_type = Json_double;
+                m_value.f64 = f64;
+            }
+            else
+            {
+                if( i64 == INT64_MAX && text[0] != '-' && errno == ERANGE ) // interger overflow
+                {
+                    m_type = Json_uint64;
+                    m_value.u64 = ::strtoull( text, (char**)&end, 10 );
+                }
+                else
+                {
+                    m_type = Json_int64;
+                    m_value.i64 = i64;
+                }
+            }
+
+            int used = static_cast<int>(end - text);
+            if( used > 0 )
+                len += used;
+            else
+                len = -1;
+        }
+        else if( strncmp( text, "true", 4 )==0 )
+        {
+            m_value.flag = true;
+            m_type = Json_boolean;
+            len += 4;
+        }
+        else if( strncmp( text, "false", 5 )==0 )
+        {
+            m_value.flag = false;
+            m_type = Json_boolean;
+            len += 5;
+        }
+        else if( strncmp( text, "null", 4 )==0 )
+        {
+            m_type = Json_null;
+            len += 4;
+        }
+        else    // unknow value
+        {
+            len = -1;
+        }
     }
 
     if( len < 0 )   // parsing failed
@@ -1573,36 +1730,24 @@ int JsonValue::parse( const char* text, int depth )
 }
 
 //======================================================================================================================
-JsonDoc::JsonDoc() : m_allocator(nullptr)
-{
-    m_allocator = new JsonAlloc;
-    m_root.m_allocator = m_allocator;
-}
+// JSON document
 
-JsonDoc::~JsonDoc()
+int JsonDoc::load_file( CFile& file )
 {
-    m_root.clear();         // must called before deleting allocator
-    delete m_allocator;
-}
-
-JsonStatus JsonDoc::parse_file( CFile& file )
-{
-    if( !file  )
-        return JsonStatus::IOFailed;
+    if( !file )
+        return -1;
 
     // check file size
-    const int64_t filesz = file.file_size();
-    if( filesz < 0 )
-        return JsonStatus::IOFailed;
-    else if( filesz > 128 * 1024 * 1024 )   // this utility is not for huge file!
-        return JsonStatus::Unsupported;
-    
+    int64_t filesz = file.file_size();
+    if( filesz < 0 || filesz > 128 * 1024 * 1024 )  // this utility is not for huge file!
+        return -1;
+   
     // read file into temp memory, add padding
     MallocedBuf mBuf;
-    uint8_t* text = (uint8_t*)mBuf.alloc( (int)filesz + 4 );    // must use uint8_t to compare to BOM
-    size_t readcnt = fread( text, 1, filesz, file );
+    uint8_t* text = (uint8_t*)mBuf.alloc( filesz + 4 ); // must use uint8_t to compare to BOM
+    size_t readcnt = ::fread( text, 1, filesz, file.get() );
     if( readcnt == 0 )
-        return JsonStatus::IOFailed;
+        return -1;
     text[readcnt] = 0;
     text[readcnt+1] = 0;
 
@@ -1613,130 +1758,114 @@ JsonStatus JsonDoc::parse_file( CFile& file )
     }
     else if( text[0]==0xFF && text[1]==0xFE )   // UTF-16, little-endian
     {
-        return JsonStatus::Unsupported;
+        return -1;
     }
     else if( text[0]==0xFE && text[1]==0xFF )   // UTF-16, big-endian
     {
-        return JsonStatus::Unsupported;
+        return -1;
     }
 
     // parse json text
-    return parse_text( (char*)text );
+    return this->load_text( (char*)text );
 }
 
-JsonStatus JsonDoc::write_file( CFile& file, const std::string& text )
+int JsonDoc::write_file( CFile& file, const std::string& text )
 {
     if( file )
     {
-        if( fprintf( file, "%s", text.c_str() ) > 0 )
-            return JsonStatus::Ok;
+        int cnt = ::fputs( text.c_str(), file.get() );
+        cnt;
     }
-    return JsonStatus::IOFailed;
+    return -1;
 }
 
 // parse Json file
-JsonStatus JsonDoc::parse_file( const char* filepath )
+int JsonDoc::load_file( const char* filepath )
 {
     // open file
     CFile file( filepath, "r" );
-    return this->parse_file( file );
+    return this->load_file( file );
 }
 
 // parse Json string
-JsonStatus JsonDoc::parse_text( const char* text )
+int JsonDoc::load_text( const char* text )
 {
-    m_root.clear();     // remove old doc(if exists)
-
-    int parsed = m_root.parse( text, 0 );
-    if( parsed <= 0 )   // parsing failed
-    {
+    int parsed = m_root.load( text );
+    if( parsed < 0 )    // parsing failed
         m_root.clear();
-        return JsonStatus::Invalid;
-    }
 
-    // if more text exists, return error but does not delete parsed content
-    for( ; text[parsed] != 0; parsed++ )
-    {
-        if( !IS_CTLWS( text[parsed] ) )
-            return JsonStatus::Invalid;
-    }
-
-    return JsonStatus::Ok;
+    return parsed;
 }
 
-// dump Json Document to UTF-8 file, return 0 if succeeded, error code defined in JsonErr
-JsonStatus JsonDoc::dump_file( const char* filename )
+// dump Json Document to UTF-8 file
+int JsonDoc::dump_file( const char* filename )
 {
     string tmpstr;
-    auto res = dump_text( tmpstr );
-    if( res != JsonStatus::Ok )
-        return res;
+    if( this->dump_text( tmpstr ) < 0 )
+        return -1;
 
     CFile file( filename, "w" );
     return this->write_file( file, tmpstr );
 }
 
-// ditto, slower but indented nicely
-JsonStatus JsonDoc::pretty_dump_file( const char* filename )
+// ditto, slower but with pretty indentation
+int JsonDoc::pretty_dump_file( const char* filename )
 {
     string tmpstr;
-    auto res = pretty_dump_text( tmpstr );
-    if( res != JsonStatus::Ok )
-        return res;
+    if( this->pretty_dump_text( tmpstr ) < 0 )
+        return -1;
 
     CFile file( filename, "w" );
     return this->write_file( file, tmpstr );
 }
 
-// dump Json Document to UTF-8 string, return 0 if succeeded
-JsonStatus JsonDoc::dump_text( std::string& out )
+// dump Json Document to UTF-8 string
+int JsonDoc::dump_text( std::string& out )
 {
-    if( !m_root.is_valid() )
-        return JsonStatus::Invalid;
+    if( m_root.is_empty() )
+        return -1;
 
     out.clear();
     out.reserve( 4096 );
-    m_root.format( out );
-    return JsonStatus::Ok;
+    m_root.dump( out );
+    return static_cast<int>( out.length() );
 }
 
-// ditto, slower but indented nicely
-JsonStatus JsonDoc::pretty_dump_text( std::string& out )
+// ditto, slower but with pretty indentation
+int JsonDoc::pretty_dump_text( std::string& out )
 {
-    if( !m_root.is_valid() )
-        return JsonStatus::Invalid;
+    if( m_root.is_empty() )
+        return -1;
 
     out.clear();
     out.reserve( 4096 );
-    m_root.format( out, 0 );
-    return JsonStatus::Ok;
+    m_root.pretty_dump( out );
+    return static_cast<int>( out.length() );
 }
 
 #ifdef _WIN32
 
-JsonStatus JsonDoc::parse_file( const wchar_t* filepath )
+int JsonDoc::load_file( const wchar_t* filepath )
 {
     CFile file( filepath, L"r" );
-    return this->parse_file( file );
+    return this->load_file( file );
 }
 
-JsonStatus JsonDoc::dump_file( const wchar_t* filename )
+int JsonDoc::dump_file( const wchar_t* filename )
 {
     string tmpstr;
-    auto res = dump_text( tmpstr );
-    if( res != JsonStatus::Ok )
-        return res;
+    if( this->dump_text( tmpstr ) < 0 )
+        return -1;
 
     CFile file( filename, L"w" );
     return this->write_file( file, tmpstr );
 }
 
-JsonStatus JsonDoc::pretty_dump_file( const wchar_t* filename )
+int JsonDoc::pretty_dump_file( const wchar_t* filename )
 {
     string tmpstr;
-    auto res = pretty_dump_text( tmpstr );
-    if( res != JsonStatus::Ok )
-        return res;
+    if( this->pretty_dump_text( tmpstr ) < 0 )
+        return -1;
 
     CFile file( filename, L"w" );
     return this->write_file( file, tmpstr );

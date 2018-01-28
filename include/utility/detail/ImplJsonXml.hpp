@@ -14,18 +14,19 @@
 #ifndef _IRK_PRIVATE_IMPLJSONXML_H_
 #define _IRK_PRIVATE_IMPLJSONXML_H_
 
-#include <stdint.h>
 #include <assert.h>
 
 // define common data struct for JSON and XML parser
 
-namespace irk { namespace detail {
+namespace irk { 
+namespace detail {
 
 // simple intrusive single list, Node class must have member m_pNext
 template<class NodeTy>
 struct SList
 {
     SList() : m_firstNode(nullptr), m_lastNode(nullptr) {}
+
     NodeTy* m_firstNode;    // the first element in the single list
     NodeTy* m_lastNode;     // the last element in the single list
 
@@ -62,6 +63,10 @@ struct SList
     NodeTy* remove( NodeTy* victim );
     template<class Pred>
     NodeTy* remove( Pred );     // with an general pred functor
+
+    // remove nodes from the back, never add new node
+    // return the first node removed
+    NodeTy* shrink( int cnt );
 
     // clear list
     void clear()
@@ -173,6 +178,37 @@ NodeTy* SList<NodeTy>::remove( Pred pred )
         this->unlink_node( prevNode, currNode );
         return currNode;
     }
+    return nullptr;
+}
+
+// remove nodes from the back, never add new node
+// return the first node removed
+template<class NodeTy>
+NodeTy* SList<NodeTy>::shrink( int cnt )
+{
+    if( cnt <= 0 )  // remove all
+    {
+        NodeTy* node = m_firstNode;
+        m_firstNode = nullptr;
+        m_lastNode = nullptr;
+        return node;
+    }
+
+    // find the new last node
+    NodeTy* lastNode = m_firstNode;
+    while( lastNode && (--cnt > 0) )
+    {
+        lastNode = lastNode->m_pNext;
+    }
+
+    if( lastNode )
+    {
+        NodeTy* tail = lastNode->m_pNext;
+        lastNode->m_pNext = nullptr;
+        m_lastNode = lastNode;
+        return tail;
+    }
+
     return nullptr;
 }
 

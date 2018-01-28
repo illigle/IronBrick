@@ -14,10 +14,15 @@
 #ifndef _IRONBRICK_JSON_H_
 #define _IRONBRICK_JSON_H_
 
-#include <string>
+#include <stdint.h>
+#include <assert.h>
+#include <cstddef>
 #include <utility>
+#include <new>
+#include <string>
+#include <initializer_list>
 #include <tuple>
-#include "IrkCommon.h"
+#include "IrkMemPool.h"
 #include "detail/ImplJsonXml.hpp"
 
 //
@@ -25,45 +30,121 @@
 //
 namespace irk {
 
-class CFile;
+class JsonAllocator
+{
+public:
+    virtual ~JsonAllocator() {}
+    virtual void* alloc( size_t size, size_t alignment ) = 0;
+    virtual void dealloc( void* ptr, size_t size ) = 0;
 
-class JsonDoc;      // JSON Document, created by user
-class JsonValue;    // JSON Value
-class JsonElem;     // JSON Value in JSON Array
-class JsonArray;    // JSON Array
-class JsonMember;   // JSON named Value in JSON Object
-class JsonObject;   // JSON Object
-class JsonString;   // internal string type
-class JsonAlloc;    // internal memory allocator
+    template<class Ty, class... Args>
+    Ty* create( Args&&... args )
+    {
+        void* ptr = this->alloc( sizeof(Ty), alignof(Ty) );
+        return ::new(ptr) Ty{ std::forward<Args>( args )... };
+    }
+    template<class Ty>
+    void trash( Ty* ptr )
+    {
+        if( ptr )
+        {
+            ptr->~Ty();
+            this->dealloc( ptr, sizeof(Ty) );
+        }
+    }
+};
 
-// JSON empty Object, for placeholder only
-struct JsonEmptyObject
-{};
-// JSON empty Array, for placeholder only
-struct JsonEmptyArray
-{};
+// JSON default allocator, using std new/delete
+class JsonDefaultAllocator : public JsonAllocator
+{
+public:
+    void* alloc( size_t size, size_t alignment ) override
+    {
+        assert( alignment <= sizeof(std::max_align_t) );
+        return ::operator new(size);
+    }
+    void dealloc( void* ptr, size_t /*size*/ ) override
+    {
+        ::operator delete(ptr);
+    }
+};
 
-// Expection throwed if access JSON value incorrectly
+// JSON optimized allocator, using memory pool
+class JsonMempoolAllocator : public JsonAllocator
+{
+public:
+    explicit JsonMempoolAllocator(size_t size = 16*1024) : m_pool(size) {}
+    void* alloc( size_t size, size_t alignment ) override
+    {
+        return m_pool.alloc( size, alignment );
+    }
+    void dealloc( void* ptr, size_t size ) override
+    {
+        m_pool.dealloc( ptr, size );
+    }
+private:
+    MemPool m_pool;
+};
+
+// Exception throwed if access JSON value incorrectly
 class JsonBadAccess : public std::logic_error
 {  
 public:
-    JsonBadAccess() : std::logic_error( "Json bad access" ) {}
+    JsonBadAccess() : std::logic_error( "JSON bad access" ) {}
 };
+
+class JsonValue;    // JSON Value
+class JsonArray;    // JSON Array
+class JsonObject;   // JSON Object
+class JsonString;   // JSON String
 
 //======================================================================================================================
 // JSON value, may be JSON Null, Boolean, String, Number, Array, Object
 
-class JsonValue : IrkNocopy
+class JsonValue
 {
 public:
-    // type query
+    // construct a JSON Null value using default allocator
+    explicit JsonValue( std::nullptr_t );
+    // construct a JSON Null using external allocator
+    // NOTE: user must keep allocator alive during the lifetime of this object
+    explicit JsonValue( std::nullptr_t, JsonAllocator* alloc );
+
+    // construct an empty/invalid JSON value
+    // NOTE: empty value is invalid and can't be outputed, it's only for implemention usage
+    explicit JsonValue();
+    explicit JsonValue( JsonAllocator* alloc );
+
+    // destructor no need to be virtual
+    ~JsonValue() { this->clear(); }
+
+    // copy, move, assignment, move assignment
+    JsonValue( const JsonValue& );
+    JsonValue( JsonValue&& );
+    JsonValue& operator=( const JsonValue& );
+    JsonValue& operator=( JsonValue&& );
+
+    // parse and load from JSON text
+    // return character count parsed, return -1 if failed
+    // NOTE: text must be null-terminated, depth is for internal usage
+    int load( const char* text, int depth = 0 );
+
+    // dump to JSON text
+    // NOTE: add text to the tail of the output string
+    void dump( std::string& out ) const;
+
+    // dump to JSON text with pretty indentation
+    // NOTE: add text to the tail of the output string
+    void pretty_dump( std::string& out, int indent = 0 ) const;
+
+    // value type query
     bool is_null() const    { return m_type == Json_null; }
     bool is_bool() const    { return m_type == Json_boolean; }
     bool is_number() const  { return m_type == Json_int64 || m_type == Json_uint64 || m_type == Json_double; }
     bool is_string() const  { return m_type == Json_string; }
     bool is_object() const  { return m_type == Json_object; }
     bool is_array() const   { return m_type == Json_array; }
-    bool is_valid() const   { return m_type != Json_invalid; }
+    bool is_empty() const   { return m_type == Json_empty; }
 
     // get value, if type does not match, throw JsonBadAccess
     bool                as_bool() const;
@@ -93,7 +174,7 @@ public:
     bool get( const JsonArray*& outAry ) const;
     bool get( JsonArray*& outAry );
 
-    // set new value
+    // assign new value
     void set( std::nullptr_t )
     {
         this->clear();
@@ -136,21 +217,15 @@ public:
         m_value.f64 = value;
     }
 
-    // set string, string must be null-terminated if len < 0
-    void set( const char* cstr, int len = -1 );
+    // assign string, string must be null-terminated if len < 0
+    void set( const char* str, int len = -1 );
     void set( const std::string& str );
     
-    // set empty JSON Object, return reference to the Object
-    JsonObject& set( JsonEmptyObject )
-    {
-        return this->make_empty_object();
-    }
+    // assign JSON Object, return reference to the new Object
+    JsonObject& set( const JsonObject& );
 
-    // set empty JSON Array, return reference to the Array
-    JsonArray& set( JsonEmptyArray )
-    {
-        return this->make_empty_array();
-    }
+    // assign JSON Array, return reference to the new Array
+    JsonArray& set( const JsonArray& );
 
     // ditto, for convenience
     template<typename Ty> 
@@ -168,21 +243,13 @@ public:
     // make as empty JSON Array
     JsonArray& make_empty_array();
 
-    // clear self, set to invalid state
+    // clear self, set to empty/invalid state
     void clear();
-
-    // format to JSON text, add to the tail of the output string, for internal use
-    void format( std::string& );
-    void format( std::string&, int );
-
-    // parse and fill from JSON text, for internal use
-    int parse( const char*, int );
-    int parse_number( const char* );
 
 protected:
     enum
     {
-        Json_invalid = 0,   // Invalid tag, for internal usage
+        Json_empty = 0,     // Empty/Invalid tag, for internal usage
         Json_null,          // JSON null type
         Json_boolean,       // JSON Boolean
         Json_int64,         // JSON Number
@@ -203,23 +270,9 @@ protected:
         JsonArray*  ary;
         JsonObject* obj;
     };
-    int         m_type;
-    ValUnion    m_value;
-    JsonAlloc*  m_allocator;    // internal memory allocator
-
-    friend JsonDoc;
-
-    // protected constructor, can only be created by derived class or JsonDoc
-    JsonValue() : m_type(Json_invalid), m_allocator(nullptr)
-    {}
-    JsonValue( std::nullptr_t, JsonAlloc* alloc ) : m_type(Json_null), m_allocator(alloc)
-    {}
-    ~JsonValue() // no need to be virtual, outsider can't delete directly
-    {
-        this->clear();
-    }
-    JsonValue( JsonValue&& ) noexcept;
-    JsonValue& operator=( JsonValue&& ) noexcept;
+    int             m_type;
+    ValUnion        m_value;
+    JsonAllocator*  m_alloc;    // internal memory allocator
 };
 
 //======================================================================================================================
@@ -240,21 +293,52 @@ public:
     JsonArray* parent()                     { return m_parent; }
 
 private:
-    friend JsonAlloc;
+    friend JsonAllocator;
     friend detail::SList<JsonElem>;
 
     // no public constructor, must be created by parent JSON Array 
     explicit JsonElem( JsonArray* parent );
     ~JsonElem() {}
+    JsonElem( const JsonElem& ) = delete;
+    JsonElem& operator=( const JsonElem& ) = delete;
 
     JsonElem*   m_pNext;    // next element in parent JSON Array
     JsonArray*  m_parent;   // parent JSON Array
 };
 
 // JSON Array
-class JsonArray : IrkNocopy
+class JsonArray
 {
 public:
+    // construct an empty JSON array using default allocator
+    explicit JsonArray();
+
+    // construct an empty JSON array using external allocator
+    // NOTE: user must keep allocator alive during the lifetime of this object
+    explicit JsonArray( JsonAllocator* alloc );
+
+    // destructor clear all elements
+    ~JsonArray() { this->clear(); }
+
+    // copy, move, assignment, move assignment
+    JsonArray( const JsonArray& );
+    JsonArray( JsonArray&& );
+    JsonArray& operator=( const JsonArray& );
+    JsonArray& operator=( JsonArray&& );
+
+    // parse and load from JSON text
+    // return character count parsed, return -1 if failed
+    // NOTE: text must be null-terminated, depth is for internal usage
+    int load( const char* text, int depth = 0 );
+
+    // dump to JSON text
+    // NOTE: add text to the tail of the output string
+    void dump( std::string& out ) const;
+
+    // dump to JSON text with pretty indentation
+    // NOTE: add text to the tail of the output string
+    void pretty_dump( std::string& out, int indent = 0 ) const;
+
     // children traversal
     typedef detail::JXIterator<JsonElem> Iterator;          // forward iterator
     typedef detail::JXIterator<const JsonElem> CIterator;   // forward const iterator
@@ -270,19 +354,28 @@ public:
     const JsonElem* first() const   { return m_slist.m_firstNode; }
     JsonElem* first()               { return m_slist.m_firstNode; }
 
-    // return the last element, return nullptr if array is empty 
-    const JsonElem* last() const    { return m_slist.m_lastNode; }
-    JsonElem* last()                { return m_slist.m_lastNode; }
-
-    // find idx'th element, return nullptr if failed
+    // find idx'th element
     // WARNING: use sequential search, for traversal using iterator instead.
-    JsonElem* find( int idx );
-    const JsonElem* find( int idx ) const;
+    JsonElem& operator[]( int idx )
+    {
+        assert( idx >= 0 && idx < m_count );
+        JsonElem* pelem = m_slist.find( idx );
+        return *pelem;
+    }
+    const JsonElem& operator[]( int idx ) const
+    {
+        assert( idx >= 0 && idx < m_count );
+        const JsonElem* pelem = m_slist.find( idx );
+        return *pelem;
+    }
+
+    // resize the array, if the current count is less than count, additional JSON Null value are appended
+    void resize( int count );
 
     // add a null element to the tail of array, return reference to the new element
     JsonElem& add( std::nullptr_t );
 
-    // add a scalar value of array, return reference to the new element
+    // add a generic value to the tail of array, return reference to the new element
     template<typename Ty>
     JsonElem& add( const Ty& val )
     {
@@ -290,17 +383,34 @@ public:
         elem.set( val );
         return elem;
     }
-    // add an empty JSON Object, return reference to the new Object
-    JsonObject& add( JsonEmptyObject )
+
+    // add a JSON value to the tail of array, return reference to the new element
+    JsonElem& add( const JsonValue& val )
+    {
+        JsonElem& elem = this->add( nullptr );
+        (JsonValue&)elem = val;
+        return elem;
+    }
+
+    // add an empty JSON Object o the tail of array, return reference to the new Object
+    JsonObject& add_object()
     {
         JsonElem& elem = this->add( nullptr );
         return elem.make_empty_object();
     }
-    // add an empty JSON Array, return reference to the new Array
-    JsonArray& add( JsonEmptyArray )
+
+    // add an empty JSON Array o the tail of array, return reference to the new Array
+    JsonArray& add_array()
     {
         JsonElem& elem = this->add( nullptr );
         return elem.make_empty_array();
+    }
+
+    // add sequence of elements in the tuple
+    template<typename... Ts>
+    void add( const std::tuple<Ts...>& tup )
+    {
+        this->add_tuple( tup, std::make_index_sequence<sizeof...(Ts)>() );
     }
 
     // ditto, for convenience
@@ -310,20 +420,38 @@ public:
         this->add( val );
     }
 
+    // add sequence of elements of the same type
+    template<typename Ty>
+    void operator+=( std::initializer_list<Ty> initlist )
+    {
+        for( const Ty& val : initlist )
+            this->add( val );
+    }
+
     // add sequence of elements
     template<typename... Ts>
     void adds( Ts... values )
     {
 #if __cplusplus >= 201703L
-        (this->add(values), ...);
+        ((void)this->add(values), ...);
 #else
         char dummy[] = { ((void)this->add(values), '0')... };
         (void)dummy;
 #endif
     }
-    template<typename... Ts>
-    void operator+=( const std::tuple<Ts...>& tup )
+
+    // assignment for convenience
+    template<typename Ty>
+    void operator=( std::initializer_list<Ty> initlist )
     {
+        this->clear();
+        for( const Ty& val : initlist )
+            this->add( val );
+    }
+    template<typename... Ts>
+    void operator=( const std::tuple<Ts...>& tup )
+    {
+        this->clear();
         this->add_tuple( tup, std::make_index_sequence<sizeof...(Ts)>() );
     }
 
@@ -335,22 +463,10 @@ public:
     // delete all elements
     void clear();
 
-    // format JSON text, add to the tail of the output string, for internal use
-    void format( std::string& outStr );
-    void format( std::string& outStr, int indent );
-
-    // parse and fill from JSON text, for internal use
-    int parse( const char*, int );
-
-    // return allocator, for internal use
-    JsonAlloc* allocator()  { return m_allocator; }
+    // return allocator
+    JsonAllocator* allocator() const  { return m_alloc; }
 
 private:
-    // can not create directly, must be created by parent or JSON Document
-    friend JsonAlloc;
-    explicit JsonArray(JsonAlloc* alloc) : m_count(0), m_allocator(alloc) {}
-    ~JsonArray() { this->clear(); }
-
     template<typename... Ts, size_t... Is>
     void add_tuple( const std::tuple<Ts...>& tup, std::index_sequence<Is...> )
     {
@@ -362,8 +478,8 @@ private:
 #endif
     }
 
-    int         m_count;                // number of children
-    JsonAlloc*  m_allocator;            // memory allocator
+    JsonAllocator*          m_alloc;    // memory allocator
+    int                     m_count;    // number of elements
     detail::SList<JsonElem> m_slist;    // elements list
 };
 
@@ -389,22 +505,29 @@ public:
     const JsonObject* parent() const        { return m_parent; }
     JsonObject* parent()                    { return m_parent; }
 
-    // format JSON text, add to the tail of the output string, for internal use
-    void format( std::string& );
-    void format( std::string&, int );
+    // parse and load from JSON text
+    // return character count parsed, return -1 if failed
+    // NOTE: text must be null-terminated, depth is for internal usage
+    int load( const char* text, int depth = 0 );
 
-    // parse and fill from JSON text, for internal use
-    int parse( const char*, int );
+    // dump to JSON text
+    // NOTE: add text to the tail of the output string
+    void dump( std::string& out ) const;
+
+    // dump to JSON text with pretty indentation
+    // NOTE: add text to the tail of the output string
+    void pretty_dump( std::string& out, int indent = 0 ) const;
 
 private:
-    friend JsonAlloc;
+    friend JsonAllocator;
     friend detail::SList<JsonMember>;
 
     // no public constructor, must be created by parent JSON Object
-    explicit JsonMember( JsonObject* parent );
     JsonMember( const char* name, JsonObject* parent );
     JsonMember( const std::string& name, JsonObject* parent );
     ~JsonMember();
+    JsonMember( const JsonMember& ) = delete;
+    JsonMember& operator=( const JsonMember& ) = delete;
 
     JsonString* m_pName;    // member name
     JsonMember* m_pNext;    // next member in parent JSON Object
@@ -415,6 +538,35 @@ private:
 class JsonObject : IrkNocopy
 {
 public:
+    // construct an empty JSON Object using default allocator
+    explicit JsonObject();
+
+    // construct an empty JSON Object using external allocator
+    // NOTE: user must keep allocator alive during the lifetime of this object
+    explicit JsonObject( JsonAllocator* alloc );
+
+    // destructor clear all elements
+    ~JsonObject() { this->clear(); }
+
+    // copy, move, assignment, move assignment
+    JsonObject( const JsonObject& );
+    JsonObject( JsonObject&& );
+    JsonObject& operator=( const JsonObject& );
+    JsonObject& operator=( JsonObject&& );
+
+    // parse and load from JSON text
+    // return character count parsed, return -1 if failed
+    // NOTE: text must be null-terminated, depth is for internal usage
+    int load( const char* text, int depth = 0 );
+
+    // dump to JSON text
+    // NOTE: add text to the tail of the output string
+    void dump( std::string& out ) const;
+
+    // dump to JSON text with pretty indentation
+    // NOTE: add text to the tail of the output string
+    void pretty_dump( std::string& out, int indent = 0 ) const;
+
     // children traversal
     typedef detail::JXIterator<JsonMember> Iterator;        // forward iterator
     typedef detail::JXIterator<const JsonMember> CIterator; // forward const iterator
@@ -430,10 +582,6 @@ public:
     const JsonMember* first() const { return m_slist.m_firstNode; }
     JsonMember* first()             { return m_slist.m_firstNode; }
 
-    // return the last member, return nullptr if empty 
-    const JsonMember* last() const  { return m_slist.m_lastNode; }
-    JsonMember* last()              { return m_slist.m_lastNode; }
-
     // find the desired member, return nullptr if failed
     // WARNING: if duplicate name exists, only return the first one.
     // WARNING: use sequential search, for traversal using iterator instead.
@@ -446,7 +594,7 @@ public:
     JsonMember& add( const char* name, std::nullptr_t );
     JsonMember& add( const std::string& name, std::nullptr_t );
 
-    // add scalar member to the object, return reference to the new member
+    // add a generic value to the object, return reference to the new member
     template<typename Ty>
     JsonMember& add( const char* name, const Ty& val )
     {
@@ -462,25 +610,39 @@ public:
         return member;
     }
 
-    // add empty JSON Object, return reference to the new Object
-    JsonObject& add( const char* name, JsonEmptyObject )
+    // add a named JSON value to the object, return reference to the new member
+    JsonMember& add( const char* name, const JsonValue& val )
+    {
+        JsonMember& member = this->add( name, nullptr );
+        (JsonValue&)member = val;
+        return member;
+    }
+    JsonMember& add( const std::string& name, const JsonValue& val )
+    {
+        JsonMember& member = this->add( name, nullptr );
+        (JsonValue&)member = val;
+        return member;
+    }
+
+    // add an empty JSON Object, return reference to the new Object
+    JsonObject& add_object( const char* name )
     {
         JsonMember& member = this->add( name, nullptr );
         return member.make_empty_object();
     }
-    JsonObject& add( const std::string& name, JsonEmptyObject )
+    JsonObject& add_object( const std::string& name )
     {
         JsonMember& member = this->add( name, nullptr );
         return member.make_empty_object();
     }
 
-    // add empty JSON Array, return reference to the new Array
-    JsonArray& add( const char* name, JsonEmptyArray )
+    // add an empty JSON Array, return reference to the new Array
+    JsonArray& add_array( const char* name )
     {
         JsonMember& member = this->add( name, nullptr );
         return member.make_empty_array();
     }
-    JsonArray& add( const std::string& name, JsonEmptyArray )
+    JsonArray& add_array( const std::string& name )
     {
         JsonMember& member = this->add( name, nullptr );
         return member.make_empty_array();
@@ -502,10 +664,23 @@ public:
         return this->add( name, nullptr );
     }
 
+    // for user familiar with std::map
+    template<typename Cy, typename Vy>
+    decltype(auto) add( const std::pair<Cy,Vy>& item )
+    {
+        return this->add( item.first, item.second );
+    }
+    template<typename Cy, typename Vy>
+    void operator+=( const std::pair<Cy,Vy>& item )
+    {
+        this->add( item.first, item.second );
+    }
+
     // add sequence of scalar members: (name, value, name, value, ...)
     template<typename Cy, typename Vy, typename ...Ps>
     void adds( const Cy& name, const Vy& val, Ps&& ...pairs )
     {
+        static_assert((sizeof...(pairs) & 1) == 0, "must be name:vlaue pair");
         this->add( name, val );
         this->adds( std::forward<Ps>(pairs)... );
     }
@@ -519,41 +694,20 @@ public:
     // delete all members
     void clear();
 
-    // format JSON text, add to the tail of the output string, for internal use
-    void format( std::string& );
-    void format( std::string&, int );
-
-    // parse and fill from JSON text, for internal use
-    int parse( const char*, int );
-
-    // return allocator, for internal use
-    JsonAlloc* allocator()  { return m_allocator; }
+    // return allocator
+    JsonAllocator* allocator() const { return m_alloc; }
 
 private:
-    // can not create directly, must be created by parent or JSON Document
-    friend JsonAlloc;
-    explicit JsonObject( JsonAlloc* alloc ) : m_count(0), m_allocator(alloc) {}
-    ~JsonObject() { this->clear(); }
-
-    JsonMember& add_null();
     void adds() {}
-
-    int         m_count;                // number of children
-    JsonAlloc*  m_allocator;            // memory allocator
-    detail::SList<JsonMember> m_slist;  // member list
+    JsonAllocator*              m_alloc;    // memory allocator
+    int                         m_count;    // number of members
+    detail::SList<JsonMember>   m_slist;    // member list
 };
 
 //======================================================================================================================
 // JSON Document
 
-// JSON parsing status
-enum class JsonStatus
-{
-    Ok = 0,         // No Error
-    Invalid,        // invalid JSON content or syntax
-    IOFailed,       // file read/write failed
-    Unsupported,    // unsupported (such as UTF-16 encoding)
-};
+class CFile;
 
 class JsonDoc : IrkNocopy
 {
@@ -561,17 +715,20 @@ public:
     static const int kMaxDepth = 80;    // max depth to prevent stack overflow
     static const int kMaxIndent = 40;   // max indent when print pretty
 
-    JsonDoc();
-    ~JsonDoc();
+    explicit JsonDoc() : m_alloc(), m_root( &m_alloc ) {}
+    explicit JsonDoc( size_t size ) : m_alloc( size ), m_root( &m_alloc ) {}
+    ~JsonDoc() { m_root.clear(); }
 
-    // parse Json file
-    JsonStatus parse_file( const char* filepath );
+    // parse and load from Json file, 
+    // return -1 if failed
+    int load_file( const char* filepath );
 
-    // parse Json text, text must be null terminated
-    JsonStatus parse_text( const char* text );
+    // parse and load from Json text, text must be null terminated
+    // return -1 if failed
+    int load_text( const char* text );
 
     // is JSON document valid/parsed
-    explicit operator bool() const      { return m_root.is_valid(); }
+    explicit operator bool() const      { return !m_root.is_empty(); }
 
     // return the JSON root Object/Array
     const JsonValue& root() const       { return m_root; }
@@ -584,27 +741,62 @@ public:
     JsonArray& create_root_array()      { return m_root.make_empty_array(); }
 
     // dump Json document as UTF-8 file
-    JsonStatus dump_file( const char* filename );
+    // return -1 if failed
+    int dump_file( const char* filename );
     
     // dump Json document as UTF-8 string
-    JsonStatus dump_text( std::string& out );
+    // return -1 if failed
+    int dump_text( std::string& out );
 
-    // ditto, slower but indented nicely
-    JsonStatus pretty_dump_file( const char* filename );
-    JsonStatus pretty_dump_text( std::string& out );
+    // ditto, slower but with pretty indentation
+    int pretty_dump_file( const char* filename );
+    int pretty_dump_text( std::string& out );
 
 #ifdef _WIN32
-    JsonStatus parse_file( const wchar_t* filepath );
-    JsonStatus dump_file( const wchar_t* filename );
-    JsonStatus pretty_dump_file( const wchar_t* filename );
+    int load_file( const wchar_t* filepath );
+    int dump_file( const wchar_t* filename );
+    int pretty_dump_file( const wchar_t* filename );
 #endif
 
 private:
-    JsonStatus parse_file( CFile& );
-    JsonStatus write_file( CFile&, const std::string& );
-    JsonAlloc*  m_allocator;    // internal memory allocator
-    JsonValue   m_root;         // the root JSON Value
+    int load_file( CFile& );
+    int write_file( CFile&, const std::string& );
+    JsonMempoolAllocator    m_alloc;    // memory allocator, must be declared first
+    JsonValue               m_root;     // the root JSON Value
 };
+
+//======================================================================================================================
+// convenient free functions
+
+inline JsonValue json_parse( const char* text )
+{
+    JsonValue val;
+    val.load( text );
+    return std::move( val );
+}
+
+inline JsonValue json_parse( const char* text, JsonAllocator* allocator )
+{
+    JsonValue val( allocator );
+    val.load( text );
+    return std::move( val );
+}
+
+template<class Ty>
+inline std::string json_dump( const Ty& obj )
+{
+    std::string text;
+    obj.dump( text );
+    return std::move( text );
+}
+
+template<class Ty>
+inline std::string json_pretty_dump( const Ty& obj )
+{
+    std::string text;
+    obj.pretty_dump( text );
+    return std::move( text );
+}
 
 } // namespace irk
 #endif

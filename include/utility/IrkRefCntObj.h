@@ -58,7 +58,8 @@ public:
     RefPtr( T* ptr )
     {
         m_ptr = ptr;
-        m_ptr->add_ref();
+        if( m_ptr )
+            m_ptr->add_ref();
     }
     ~RefPtr()
     {
@@ -68,7 +69,8 @@ public:
     RefPtr( const RefPtr& other ) noexcept
     {
         m_ptr = other.m_ptr;
-        m_ptr->add_ref();
+        if( m_ptr )
+            m_ptr->add_ref();
     }
     RefPtr( RefPtr&& other ) noexcept
     {
@@ -99,7 +101,8 @@ public:
     {
         static_assert( std::is_base_of<T,U>::value, "" );
         m_ptr = other.pointer();
-        m_ptr->add_ref();
+        if( m_ptr )
+            m_ptr->add_ref();
     }
     template<typename U>
     RefPtr( RefPtr<U>&& other ) noexcept
@@ -111,7 +114,11 @@ public:
     RefPtr& operator=( const RefPtr<U>& other ) noexcept
     {
         static_assert( std::is_base_of<T,U>::value, "" );
-        this->rebind( other.pointer() );
+        if( m_ptr )
+            m_ptr->dismiss();
+        m_ptr = other.pointer();
+        if( m_ptr )
+            m_ptr->add_ref();
         return *this;
     }
     template<typename U>
@@ -128,13 +135,21 @@ public:
     {
         return m_ptr;
     }
-    T* detach() noexcept    // handout ownership
+    T* detach() noexcept        // handout ownership
     {
         T* ptr = m_ptr;
         m_ptr = nullptr;
         return ptr;
     }
-    void reset() noexcept   // make empty
+    void operator=( decltype(nullptr) ) noexcept
+    {
+        if( m_ptr )
+        {
+            m_ptr->dismiss();
+            m_ptr = nullptr;
+        }
+    }
+    void reset() noexcept
     {
         if( m_ptr )
         {
@@ -144,12 +159,12 @@ public:
     }
     void rebind( T* ptr ) noexcept
     {
-        if( ptr )
-            ptr->add_ref();
         if( m_ptr )
             m_ptr->dismiss();
         m_ptr = ptr;
-    }
+        if( m_ptr )
+            m_ptr->add_ref();
+    }  
     void swap( RefPtr& other ) noexcept                    
     { 
         T* tmp = m_ptr;
@@ -170,6 +185,27 @@ inline RefPtr<T> make_refptr( Args&&... args )
 {
     T* ptr = new T{ std::forward<Args>(args)... };
     return RefPtr<T>{ ptr };
+}
+
+template<typename T, typename U>
+inline bool operator==( const RefPtr<T>& p1, const RefPtr<U>& p2 )
+{
+    return p1.pointer() == p2.pointer();
+}
+template<typename T, typename U>
+inline bool operator!=( const RefPtr<T>& p1, const RefPtr<U>& p2 )
+{
+    return p1.pointer() != p2.pointer();
+}
+template<typename T>
+inline bool operator==( const RefPtr<T>& p1, decltype(nullptr) )
+{
+    return p1.pointer() == nullptr;
+}
+template<typename T>
+inline bool operator!=( const RefPtr<T>& p1, decltype(nullptr) )
+{
+    return p1.pointer() != nullptr;
 }
 
 }   // namespace irk

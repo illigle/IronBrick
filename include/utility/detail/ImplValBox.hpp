@@ -230,11 +230,17 @@ struct BoxUnwrap
     {
         return BoxTid<T>::tid == box.tid;
     }
-    static inline T& get( const BoxData& box )  // unwrap box and get real data
+    static inline T& get( const BoxData& box )      // unwrap box and get real data
     {
-        assert( BoxTid<T>::tid == box.tid );
+        assert( BoxTid<T>::tid == box.tid && box.tid > TYPEID_OBJ );
         auto realobj = static_cast<BoxedObj<T>*>( box.pobj );
         return realobj->m_obj;
+    }
+    static inline T* getptr( const BoxData& box )   // unwrap box and get real data
+    {
+        assert( BoxTid<T>::tid == box.tid && box.tid > TYPEID_OBJ );
+        auto realobj = static_cast<BoxedObj<T>*>( box.pobj );
+        return &(realobj->m_obj);
     }
 };
 
@@ -271,12 +277,28 @@ struct BoxUnwrap<float>
 {
     static inline bool matched( const BoxData& box )
     {
-        return BoxTid<float>::tid == box.tid;
+        return (TYPEID_FLOAT == box.tid || 
+                TYPEID_DOUBLE == box.tid ||
+                TYPEID_INT32 == box.tid ||
+                TYPEID_UINT32 == box.tid );
     }
     static inline float get( const BoxData& box )
     {
-        assert( BoxTid<float>::tid == box.tid );
-        return box.f32;
+        switch( box.tid )
+        {
+        case TYPEID_INT32:
+            return static_cast<float>( box.i32 );
+        case TYPEID_UINT32:
+            return static_cast<float>( box.u32 );
+        case TYPEID_FLOAT:
+            return box.f32;
+        case TYPEID_DOUBLE:
+            return static_cast<float>( box.f64 );
+        default:
+            assert(0);
+            break;
+        }
+        return 0.f;
     }
 };
 
@@ -285,12 +307,34 @@ struct BoxUnwrap<double>
 {
     static inline bool matched( const BoxData& box )
     {
-        return (TYPEID_DOUBLE == box.tid || TYPEID_FLOAT == box.tid);
+        return (TYPEID_DOUBLE == box.tid || 
+                TYPEID_FLOAT == box.tid ||
+                TYPEID_INT32 == box.tid ||
+                TYPEID_UINT32 == box.tid ||
+                TYPEID_INT64 == box.tid ||
+                TYPEID_UINT64 == box.tid );
     }
     static inline double get( const BoxData& box )
     {
-        assert( TYPEID_DOUBLE == box.tid || TYPEID_FLOAT == box.tid );
-        return (TYPEID_DOUBLE == box.tid) ? box.f64 : box.f32;
+        switch( box.tid )
+        {
+        case TYPEID_INT32:
+            return static_cast<double>( box.i32 );
+        case TYPEID_UINT32:
+            return static_cast<double>( box.u32 );
+        case TYPEID_INT64:
+            return static_cast<double>( box.i64 );
+        case TYPEID_UINT64:
+            return static_cast<double>( box.u64 );
+        case TYPEID_FLOAT:
+            return box.f32;
+        case TYPEID_DOUBLE:
+            return box.f64;
+        default:
+            assert(0);
+            break;
+        }
+        return 0.0;
     }
 };
 

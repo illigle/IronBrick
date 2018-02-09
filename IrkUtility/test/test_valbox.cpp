@@ -143,6 +143,10 @@ TEST( ValBox, Normal )
         box = v;
         box.try_get<MyValue>( &v );
         EXPECT_TRUE( v.m_x == -1 && v.m_y ==2 && v.m_z == 3 );
+
+        const MyValue* pv = box.getptr<MyValue>();
+        ASSERT_NE( nullptr, pv );
+        EXPECT_TRUE( pv->m_x == -1 && pv->m_y ==2 && pv->m_z == 3 );
     }
     {
         ValBox box = make_valuebox<MyValue>(1,2,3);
@@ -168,8 +172,6 @@ TEST( ValBox, Abnormal )
     ValBox box( v ); 
     EXPECT_THROW( box.get<bool>(), BoxBadAccess );
     EXPECT_THROW( box.get<int8_t>(), BoxBadAccess );
-    EXPECT_THROW( box.get<float>(), BoxBadAccess );
-    EXPECT_THROW( box.get<double>(), BoxBadAccess );
     EXPECT_THROW( box.get<Rational>(), BoxBadAccess );
     EXPECT_THROW( box.get<MyValue>(), BoxBadAccess );
     // integer safe conversion
@@ -184,10 +186,10 @@ TEST( ValBox, Abnormal )
     int i32 = 127;
     box = i32;
     EXPECT_FALSE( box.can_get<bool>() );
-    EXPECT_FALSE( box.can_get<float>() );
-    EXPECT_FALSE( box.can_get<double>() );
     EXPECT_FALSE( box.can_get<Rational>() );
     EXPECT_FALSE( box.can_get<MyValue>() );
+    EXPECT_TRUE( box.can_get<float>() );        // convert int to float
+    EXPECT_TRUE( box.can_get<double>() );       // convert int to double
     // integer safe conversion
     EXPECT_EQ( i32, box.get<char>() );
     EXPECT_EQ( i32, box.get<uint8_t>() );
@@ -197,7 +199,7 @@ TEST( ValBox, Abnormal )
     EXPECT_EQ( i32, box.get<int16_t>() );
     EXPECT_EQ( i32, box.get<int32_t>() );
     EXPECT_EQ( i32, box.get<int64_t>() );
-
+    
     // integer safe conversion
     i32 = 65535;
     box = i32;
@@ -210,14 +212,16 @@ TEST( ValBox, Abnormal )
     EXPECT_EQ( i32, box.get<uint64_t>() );
     EXPECT_EQ( i32, box.get<int32_t>() );
     EXPECT_EQ( i32, box.get<int64_t>() );
+    EXPECT_FLOAT_EQ( (float)i32, box.get<float>() );
+    EXPECT_DOUBLE_EQ( (double)i32, box.get<double>() );
 
     // float -> double
     float f32 = 1.23456f;
     box = f32;
     EXPECT_FALSE( box.can_get<bool>() );
     EXPECT_FALSE( box.try_get<int>( &i32 ) );
-    EXPECT_EQ( f32, box.get<float>() );
-    EXPECT_EQ( f32, box.get<double>() );
+    EXPECT_FLOAT_EQ( f32, box.get<float>() );
+    EXPECT_DOUBLE_EQ( f32, box.get<double>() );
 
     // destructor
     int cnt = 1;

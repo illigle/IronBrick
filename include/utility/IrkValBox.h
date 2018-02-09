@@ -137,6 +137,11 @@ public:
         m_box.rational = val;
         m_box.tid = detail::TYPEID_RATIONAL;
     }
+    explicit ValBox( decltype(nullptr) )
+    {
+        m_box.ptr = nullptr;
+        m_box.tid = detail::TYPEID_PTR;
+    }
     template<typename T>
     explicit ValBox( const T* ptr )
     {
@@ -160,88 +165,83 @@ public:
     }
 
     // assignment
-    ValBox& operator=(bool val)
+    void operator=(bool val)
     {
         m_box.reset();
         m_box.flag = val;
         m_box.tid = detail::TYPEID_BOOL;
-        return *this;
     }
-    ValBox& operator=( int32_t val )
+    void operator=( int32_t val )
     {
         m_box.reset();
         m_box.i32 = val;
         m_box.tid = detail::TYPEID_INT32;
-        return *this;
     }
-    ValBox& operator=( uint32_t val )
+    void operator=( uint32_t val )
     {
         m_box.reset();
         m_box.u32 = val;
         m_box.tid = detail::TYPEID_UINT32;
-        return *this;
     }
-    ValBox& operator=( int64_t val )
+    void operator=( int64_t val )
     {
         m_box.reset();
         m_box.i64 = val;
         m_box.tid = detail::TYPEID_INT64;
-        return *this;
     }
-    ValBox& operator=( uint64_t val )
+    void operator=( uint64_t val )
     {
         m_box.reset();
         m_box.u64 = val;
         m_box.tid = detail::TYPEID_UINT64;
-        return *this;
     }
-    ValBox& operator=( float val )
+    void operator=( float val )
     {
         m_box.reset();
         m_box.f32 = val;
         m_box.tid = detail::TYPEID_FLOAT;
-        return *this;
     }
-    ValBox& operator=( double val )
+    void operator=( double val )
     {
         m_box.reset();
         m_box.f64 = val;
         m_box.tid = detail::TYPEID_DOUBLE;
-        return *this;
     }
-    ValBox& operator=( Rational val )
+    void operator=( Rational val )
     {
         m_box.reset();
         m_box.rational = val;
         m_box.tid = detail::TYPEID_RATIONAL;
-        return *this;
+    }
+    void operator=( decltype(nullptr) )
+    {
+        m_box.reset();
+        m_box.ptr = nullptr;
+        m_box.tid = detail::TYPEID_PTR;
     }
     template<typename T>
-    ValBox& operator=( const T* ptr )
+    void operator=( const T* ptr )
     {
         static_assert( !std::is_base_of<ValBox,T>::value, "" );
         m_box.reset();
         m_box.ptr = (void*)ptr;
         m_box.tid = detail::TYPEID_PTR;
-        return *this;
     }
     template<typename T>
-    auto operator=( const T& val ) -> std::enable_if_t<is_nonscalar<T>(),ValBox&>
+    auto operator=( const T& val ) -> std::enable_if_t<is_nonscalar<T>()>
     {
         static_assert( std::is_copy_constructible<T>::value, "require copy constructible" );
         m_box.reset();
         m_box.pobj = detail::make_boxed_obj<T>(val);
         m_box.tid = tidof<T>();
-        return *this;
     }
     template<typename T>
-    auto operator=( T&& val ) -> std::enable_if_t<is_nonscalar<T>(),ValBox&>
+    auto operator=( T&& val ) -> std::enable_if_t<is_nonscalar<T>()>
     {
         static_assert( std::is_move_constructible<T>::value, "require move constructible" );
         m_box.reset();
         m_box.pobj = detail::make_boxed_obj<T>(std::move(val));
         m_box.tid = tidof<T>();
-        return *this;
     }
 
     template<typename T, typename... Args>
@@ -284,7 +284,7 @@ public:
         return false;
     }
 
-    //get value of the specified type, throw BoxBadAccess if failed
+    // get value of the specified type, throw BoxBadAccess if failed
     template<typename T>
     T get() const &
     {
@@ -298,6 +298,16 @@ public:
         if( !detail::BoxUnwrap<T>::matched( m_box ) )
             throw BoxBadAccess{};
         return std::move( detail::BoxUnwrap<T>::get(m_box) );
+    }
+
+    // get pointer for engaged value, for no-scalar type only
+    template<typename T>
+    const T* getptr() const
+    {
+        static_assert( is_nonscalar<T>(), "for scalar type just using copy" );
+        if( !detail::BoxUnwrap<T>::matched( m_box ) )
+            return nullptr;
+        return detail::BoxUnwrap<T>::getptr(m_box);
     }
 
     void swap( ValBox& other ) noexcept

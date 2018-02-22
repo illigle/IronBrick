@@ -10,12 +10,12 @@ public:
     AvsFileReader();
     ~AvsFileReader();
 
-    bool open( const char* filename );
+    bool open(const char* filename);
     void close();
-    int  seek( int64_t offset );
+    int  seek(int64_t offset);
 
     // 读取一帧数据, 返回的指针无需释放, 在下一次调用和关闭前有效
-    const uint8_t* get_picture( size_t* psize );
+    const uint8_t* get_picture(size_t* psize);
 
 private:
     typedef irk::Vector<uint8_t> DataVec;

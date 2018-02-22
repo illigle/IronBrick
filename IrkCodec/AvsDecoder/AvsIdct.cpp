@@ -1,13 +1,13 @@
 ﻿/*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -128,87 +128,87 @@ alignas(16) const int16_t s_RndRow[8] = {64, 64, 64, 64, 64, 64, 64, 64};
 namespace irk_avs_dec {
 
 // src: 列主序存储的 DCT 系数
-void IDCT_8x8_add_sse4( const int16_t src[64], uint8_t* dst, int dstPitch )
+void IDCT_8x8_add_sse4(const int16_t src[64], uint8_t* dst, int dstPitch)
 {
-    assert( ((uintptr_t)src & 15) == 0 );
+    assert(((uintptr_t)src & 15) == 0);
     __m128i tm1, tm3, tm5, tm7;
-    __m128i xm0 = _mm_load_si128( (__m128i*)(src + 8*0) );
-    __m128i xm1 = _mm_load_si128( (__m128i*)(src + 8*1) );
-    __m128i xm2 = _mm_load_si128( (__m128i*)(src + 8*2) );
-    __m128i xm3 = _mm_load_si128( (__m128i*)(src + 8*3) );
-    __m128i xm4 = _mm_load_si128( (__m128i*)(src + 8*4) );
-    __m128i xm5 = _mm_load_si128( (__m128i*)(src + 8*5) );
-    __m128i xm6 = _mm_load_si128( (__m128i*)(src + 8*6) );
-    __m128i xm7 = _mm_load_si128( (__m128i*)(src + 8*7) );
+    __m128i xm0 = _mm_load_si128((__m128i*)(src + 8 * 0));
+    __m128i xm1 = _mm_load_si128((__m128i*)(src + 8 * 1));
+    __m128i xm2 = _mm_load_si128((__m128i*)(src + 8 * 2));
+    __m128i xm3 = _mm_load_si128((__m128i*)(src + 8 * 3));
+    __m128i xm4 = _mm_load_si128((__m128i*)(src + 8 * 4));
+    __m128i xm5 = _mm_load_si128((__m128i*)(src + 8 * 5));
+    __m128i xm6 = _mm_load_si128((__m128i*)(src + 8 * 6));
+    __m128i xm7 = _mm_load_si128((__m128i*)(src + 8 * 7));
 
     // 列变换, 结果在 xm0, xm2, xm4, xm6, xm1, xm3, xm5, xm7
-    AVS_IDCT_1D( xm0, xm1, xm2, xm3, xm4, xm5, xm6, xm7, tm1, tm3, tm5, tm7 );
+    AVS_IDCT_1D(xm0, xm1, xm2, xm3, xm4, xm5, xm6, xm7, tm1, tm3, tm5, tm7);
 
     // (x + 4) >> 3
-    tm5 = _mm_load_si128( (__m128i*)s_RndCol );
-    ROUND_SHIFT( xm0, xm2, xm4, xm6, xm1, xm3, xm5, xm7, tm5, 3 );
+    tm5 = _mm_load_si128((__m128i*)s_RndCol);
+    ROUND_SHIFT(xm0, xm2, xm4, xm6, xm1, xm3, xm5, xm7, tm5, 3);
 
     // 8x8 转置, 结果在 xm0, xm2, xm3, xm1, xm7, xm4, xm5, xm6
-    TRANSPOSE_8x8( xm0, xm2, xm4, xm6, xm1, xm3, xm5, xm7, tm5 );
+    TRANSPOSE_8x8(xm0, xm2, xm4, xm6, xm1, xm3, xm5, xm7, tm5);
 
     // 行变换, 结果在 xm0, xm3, xm7, xm5, xm2, xm1, xm4, xm6
-    AVS_IDCT_1D( xm0, xm2, xm3, xm1, xm7, xm4, xm5, xm6, tm1, tm3, tm5, tm7 );
+    AVS_IDCT_1D(xm0, xm2, xm3, xm1, xm7, xm4, xm5, xm6, tm1, tm3, tm5, tm7);
 
     // (x + 64) >> 7
-    tm5 = _mm_load_si128( (__m128i*)s_RndRow );
-    ROUND_SHIFT( xm0, xm3, xm7, xm5, xm2, xm1, xm4, xm6, tm5, 7 );
+    tm5 = _mm_load_si128((__m128i*)s_RndRow);
+    ROUND_SHIFT(xm0, xm3, xm7, xm5, xm2, xm1, xm4, xm6, tm5, 7);
 
     // 与预测值相加
-    tm1 = _mm_loadl_epi64( (__m128i*)dst );
-    tm3 = _mm_loadl_epi64( (__m128i*)(dst + dstPitch) );
-    tm1 = _mm_cvtepu8_epi16( tm1 );
-    tm3 = _mm_cvtepu8_epi16( tm3 );
-    tm1 = _mm_adds_epi16( tm1, xm0 );
-    tm3 = _mm_adds_epi16( tm3, xm3 );
-    tm1 = _mm_packus_epi16( tm1, tm1 );
-    tm3 = _mm_packus_epi16( tm3, tm3 );
-    _mm_storel_epi64( (__m128i*)dst, tm1 );
-    _mm_storel_epi64( (__m128i*)(dst + dstPitch), tm3 );
+    tm1 = _mm_loadl_epi64((__m128i*)dst);
+    tm3 = _mm_loadl_epi64((__m128i*)(dst + dstPitch));
+    tm1 = _mm_cvtepu8_epi16(tm1);
+    tm3 = _mm_cvtepu8_epi16(tm3);
+    tm1 = _mm_adds_epi16(tm1, xm0);
+    tm3 = _mm_adds_epi16(tm3, xm3);
+    tm1 = _mm_packus_epi16(tm1, tm1);
+    tm3 = _mm_packus_epi16(tm3, tm3);
+    _mm_storel_epi64((__m128i*)dst, tm1);
+    _mm_storel_epi64((__m128i*)(dst + dstPitch), tm3);
     dst += dstPitch * 2;
-    tm1 = _mm_loadl_epi64( (__m128i*)dst );
-    tm3 = _mm_loadl_epi64( (__m128i*)(dst + dstPitch) );
-    tm1 = _mm_cvtepu8_epi16( tm1 );
-    tm3 = _mm_cvtepu8_epi16( tm3 );
-    tm1 = _mm_adds_epi16( tm1, xm7 );
-    tm3 = _mm_adds_epi16( tm3, xm5 );
-    tm1 = _mm_packus_epi16( tm1, tm1 );
-    tm3 = _mm_packus_epi16( tm3, tm3 );
-    _mm_storel_epi64( (__m128i*)dst, tm1 );
-    _mm_storel_epi64( (__m128i*)(dst + dstPitch), tm3 );
+    tm1 = _mm_loadl_epi64((__m128i*)dst);
+    tm3 = _mm_loadl_epi64((__m128i*)(dst + dstPitch));
+    tm1 = _mm_cvtepu8_epi16(tm1);
+    tm3 = _mm_cvtepu8_epi16(tm3);
+    tm1 = _mm_adds_epi16(tm1, xm7);
+    tm3 = _mm_adds_epi16(tm3, xm5);
+    tm1 = _mm_packus_epi16(tm1, tm1);
+    tm3 = _mm_packus_epi16(tm3, tm3);
+    _mm_storel_epi64((__m128i*)dst, tm1);
+    _mm_storel_epi64((__m128i*)(dst + dstPitch), tm3);
     dst += dstPitch * 2;
-    tm1 = _mm_loadl_epi64( (__m128i*)dst );
-    tm3 = _mm_loadl_epi64( (__m128i*)(dst + dstPitch) );
-    tm1 = _mm_cvtepu8_epi16( tm1 );
-    tm3 = _mm_cvtepu8_epi16( tm3 );
-    tm1 = _mm_adds_epi16( tm1, xm2 );
-    tm3 = _mm_adds_epi16( tm3, xm1 );
-    tm1 = _mm_packus_epi16( tm1, tm1 );
-    tm3 = _mm_packus_epi16( tm3, tm3 );
-    _mm_storel_epi64( (__m128i*)dst, tm1 );
-    _mm_storel_epi64( (__m128i*)(dst + dstPitch), tm3 );
+    tm1 = _mm_loadl_epi64((__m128i*)dst);
+    tm3 = _mm_loadl_epi64((__m128i*)(dst + dstPitch));
+    tm1 = _mm_cvtepu8_epi16(tm1);
+    tm3 = _mm_cvtepu8_epi16(tm3);
+    tm1 = _mm_adds_epi16(tm1, xm2);
+    tm3 = _mm_adds_epi16(tm3, xm1);
+    tm1 = _mm_packus_epi16(tm1, tm1);
+    tm3 = _mm_packus_epi16(tm3, tm3);
+    _mm_storel_epi64((__m128i*)dst, tm1);
+    _mm_storel_epi64((__m128i*)(dst + dstPitch), tm3);
     dst += dstPitch * 2;
-    tm1 = _mm_loadl_epi64( (__m128i*)dst );
-    tm3 = _mm_loadl_epi64( (__m128i*)(dst + dstPitch) );
-    tm1 = _mm_cvtepu8_epi16( tm1 );
-    tm3 = _mm_cvtepu8_epi16( tm3 );
-    tm1 = _mm_adds_epi16( tm1, xm4 );
-    tm3 = _mm_adds_epi16( tm3, xm6 );
-    tm1 = _mm_packus_epi16( tm1, tm1 );
-    tm3 = _mm_packus_epi16( tm3, tm3 );
-    _mm_storel_epi64( (__m128i*)dst, tm1 );
-    _mm_storel_epi64( (__m128i*)(dst + dstPitch), tm3 );
+    tm1 = _mm_loadl_epi64((__m128i*)dst);
+    tm3 = _mm_loadl_epi64((__m128i*)(dst + dstPitch));
+    tm1 = _mm_cvtepu8_epi16(tm1);
+    tm3 = _mm_cvtepu8_epi16(tm3);
+    tm1 = _mm_adds_epi16(tm1, xm4);
+    tm3 = _mm_adds_epi16(tm3, xm6);
+    tm1 = _mm_packus_epi16(tm1, tm1);
+    tm3 = _mm_packus_epi16(tm3, tm3);
+    _mm_storel_epi64((__m128i*)dst, tm1);
+    _mm_storel_epi64((__m128i*)(dst + dstPitch), tm3);
 }
 
 //======================================================================================================================
 // 标准 C 实现, 用作参考
 
 // 转置矩阵
-static const int16_t s_TMatrix[64] = 
+static const int16_t s_TMatrix[64] =
 {
     8,  10,  10,   9,   8,   6,   4,   2,
     8,   9,   4,  -2,  -8, -10, -10,  -6,
@@ -220,39 +220,39 @@ static const int16_t s_TMatrix[64] =
     8, -10,  10,  -9,   8,  -6,   4,  -2,
 };
 
-void IDCT_8x8_add_c( const int16_t src[64], uint8_t* dst, int dstPitch )
+void IDCT_8x8_add_c(const int16_t src[64], uint8_t* dst, int dstPitch)
 {
     int16_t temp[64];
 
     // 列变换, 输入为列序, 输出也为列序
-    for( int j = 0; j < 8; j++ )
+    for (int j = 0; j < 8; j++)
     {
         const int16_t* tmCol = s_TMatrix + 8 * j;
-        for( int i = 0; i < 8; i++ )
+        for (int i = 0; i < 8; i++)
         {
             int sum = 0;
-            sum += src[i+8*0] * tmCol[0] + src[i+8*1] * tmCol[1];
-            sum += src[i+8*2] * tmCol[2] + src[i+8*3] * tmCol[3];
-            sum += src[i+8*4] * tmCol[4] + src[i+8*5] * tmCol[5];
-            sum += src[i+8*6] * tmCol[6] + src[i+8*7] * tmCol[7];       
-            temp[i+j*8] = (int16_t)clip3( (sum + 4) >> 3, -32768, 32767 );
+            sum += src[i + 8 * 0] * tmCol[0] + src[i + 8 * 1] * tmCol[1];
+            sum += src[i + 8 * 2] * tmCol[2] + src[i + 8 * 3] * tmCol[3];
+            sum += src[i + 8 * 4] * tmCol[4] + src[i + 8 * 5] * tmCol[5];
+            sum += src[i + 8 * 6] * tmCol[6] + src[i + 8 * 7] * tmCol[7];
+            temp[i + j * 8] = (int16_t)clip3((sum + 4) >> 3, -32768, 32767);
         }
     }
- 
+
     // 行变换
-    for( int i = 0; i < 8; i++ )
+    for (int i = 0; i < 8; i++)
     {
         uint8_t* dstRow = dst + dstPitch * i;
         const int16_t* tmRow = s_TMatrix + 8 * i;
-        for( int j = 0; j < 8; j++ )
+        for (int j = 0; j < 8; j++)
         {
             int sum = 0;
-            sum += tmRow[0] * temp[8*j+0] + tmRow[1] * temp[8*j+1];
-            sum += tmRow[2] * temp[8*j+2] + tmRow[3] * temp[8*j+3];
-            sum += tmRow[4] * temp[8*j+4] + tmRow[5] * temp[8*j+5];
-            sum += tmRow[6] * temp[8*j+6] + tmRow[7] * temp[8*j+7];
-            sum = (int16_t)clip3( (sum + 64) >> 7, -32768, 32767 );
-            dstRow[j] =  (uint8_t)clip3( dstRow[j] + sum, 0, 255 );
+            sum += tmRow[0] * temp[8 * j + 0] + tmRow[1] * temp[8 * j + 1];
+            sum += tmRow[2] * temp[8 * j + 2] + tmRow[3] * temp[8 * j + 3];
+            sum += tmRow[4] * temp[8 * j + 4] + tmRow[5] * temp[8 * j + 5];
+            sum += tmRow[6] * temp[8 * j + 6] + tmRow[7] * temp[8 * j + 7];
+            sum = (int16_t)clip3((sum + 64) >> 7, -32768, 32767);
+            dstRow[j] = (uint8_t)clip3(dstRow[j] + sum, 0, 255);
         }
     }
 }

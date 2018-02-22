@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -29,18 +29,18 @@ public:
 
     // add reference count to retain this object
     int add_ref() noexcept
-    { 
-        return atomic_inc( &m_refCnt ); 
+    {
+        return atomic_inc(&m_refCnt);
     }
 
     // dismiss this object, if reference count become 0 also delete it
     virtual int dismiss()
     {
-        const int refcnt = atomic_dec( &m_refCnt );
-        assert( refcnt >= 0 );
-        if( refcnt == 0 )
+        const int refcnt = atomic_dec(&m_refCnt);
+        assert(refcnt >= 0);
+        if (refcnt == 0)
             delete this;    // override this method if object is not create by new
-        return refcnt; 
+        return refcnt;
     }
 
     int ref_count() const { return m_refCnt; }
@@ -55,39 +55,39 @@ class RefPtr
 {
 public:
     RefPtr() : m_ptr(nullptr) {}
-    RefPtr( T* ptr )
+    RefPtr(T* ptr)
     {
         m_ptr = ptr;
-        if( m_ptr )
+        if (m_ptr)
             m_ptr->add_ref();
     }
     ~RefPtr()
     {
-        if( m_ptr )
+        if (m_ptr)
             m_ptr->dismiss();
     }
-    RefPtr( const RefPtr& other ) noexcept
+    RefPtr(const RefPtr& other) noexcept
     {
         m_ptr = other.m_ptr;
-        if( m_ptr )
+        if (m_ptr)
             m_ptr->add_ref();
     }
-    RefPtr( RefPtr&& other ) noexcept
+    RefPtr(RefPtr&& other) noexcept
     {
         m_ptr = other.m_ptr;
         other.m_ptr = nullptr;
     }
-    RefPtr& operator=( const RefPtr& other ) noexcept
+    RefPtr& operator=(const RefPtr& other) noexcept
     {
-        if( this != &other )
-            this->rebind( other.m_ptr );
+        if (this != &other)
+            this->rebind(other.m_ptr);
         return *this;
     }
-    RefPtr& operator=( RefPtr&& other ) noexcept
+    RefPtr& operator=(RefPtr&& other) noexcept
     {
-        if( this != &other )
+        if (this != &other)
         {
-            if( m_ptr )
+            if (m_ptr)
                 m_ptr->dismiss();
             m_ptr = other.m_ptr;
             other.m_ptr = nullptr;
@@ -97,35 +97,35 @@ public:
 
     // copy/assign from derived class
     template<typename U>
-    RefPtr( const RefPtr<U>& other ) noexcept
+    RefPtr(const RefPtr<U>& other) noexcept
     {
-        static_assert( std::is_base_of<T,U>::value, "" );
+        static_assert(std::is_base_of<T, U>::value, "");
         m_ptr = other.pointer();
-        if( m_ptr )
+        if (m_ptr)
             m_ptr->add_ref();
     }
     template<typename U>
-    RefPtr( RefPtr<U>&& other ) noexcept
+    RefPtr(RefPtr<U>&& other) noexcept
     {
-        static_assert( std::is_base_of<T,U>::value, "" );
+        static_assert(std::is_base_of<T, U>::value, "");
         m_ptr = other.detach();
     }
     template<typename U>
-    RefPtr& operator=( const RefPtr<U>& other ) noexcept
+    RefPtr& operator=(const RefPtr<U>& other) noexcept
     {
-        static_assert( std::is_base_of<T,U>::value, "" );
-        if( m_ptr )
+        static_assert(std::is_base_of<T, U>::value, "");
+        if (m_ptr)
             m_ptr->dismiss();
         m_ptr = other.pointer();
-        if( m_ptr )
+        if (m_ptr)
             m_ptr->add_ref();
         return *this;
     }
     template<typename U>
-    RefPtr& operator=( RefPtr<U>&& other ) noexcept
+    RefPtr& operator=(RefPtr<U>&& other) noexcept
     {
-        static_assert( std::is_base_of<T,U>::value, "" );
-        if( m_ptr )
+        static_assert(std::is_base_of<T, U>::value, "");
+        if (m_ptr)
             m_ptr->dismiss();
         m_ptr = other.detach();
         return *this;
@@ -141,9 +141,9 @@ public:
         m_ptr = nullptr;
         return ptr;
     }
-    void operator=( decltype(nullptr) ) noexcept
+    void operator=(decltype(nullptr)) noexcept
     {
-        if( m_ptr )
+        if (m_ptr)
         {
             m_ptr->dismiss();
             m_ptr = nullptr;
@@ -151,22 +151,22 @@ public:
     }
     void reset() noexcept
     {
-        if( m_ptr )
+        if (m_ptr)
         {
             m_ptr->dismiss();
             m_ptr = nullptr;
         }
     }
-    void rebind( T* ptr ) noexcept
+    void rebind(T* ptr) noexcept
     {
-        if( m_ptr )
+        if (m_ptr)
             m_ptr->dismiss();
         m_ptr = ptr;
-        if( m_ptr )
+        if (m_ptr)
             m_ptr->add_ref();
-    }  
-    void swap( RefPtr& other ) noexcept                    
-    { 
+    }
+    void swap(RefPtr& other) noexcept
+    {
         T* tmp = m_ptr;
         m_ptr = other.m_ptr;
         other.m_ptr = tmp;
@@ -177,33 +177,33 @@ public:
     explicit    operator bool() const   { return m_ptr != nullptr; }
     bool        operator!() const       { return m_ptr == nullptr; }
 private:
-    T*  m_ptr;
+    T * m_ptr;
 };
 
 template<typename T, typename... Args>
-inline RefPtr<T> make_refptr( Args&&... args )
+inline RefPtr<T> make_refptr(Args&&... args)
 {
-    T* ptr = new T{ std::forward<Args>(args)... };
+    T* ptr = new T{std::forward<Args>(args)...};
     return RefPtr<T>{ ptr };
 }
 
 template<typename T, typename U>
-inline bool operator==( const RefPtr<T>& p1, const RefPtr<U>& p2 )
+inline bool operator==(const RefPtr<T>& p1, const RefPtr<U>& p2)
 {
     return p1.pointer() == p2.pointer();
 }
 template<typename T, typename U>
-inline bool operator!=( const RefPtr<T>& p1, const RefPtr<U>& p2 )
+inline bool operator!=(const RefPtr<T>& p1, const RefPtr<U>& p2)
 {
     return p1.pointer() != p2.pointer();
 }
 template<typename T>
-inline bool operator==( const RefPtr<T>& p1, decltype(nullptr) )
+inline bool operator==(const RefPtr<T>& p1, decltype(nullptr))
 {
     return p1.pointer() == nullptr;
 }
 template<typename T>
-inline bool operator!=( const RefPtr<T>& p1, decltype(nullptr) )
+inline bool operator!=(const RefPtr<T>& p1, decltype(nullptr))
 {
     return p1.pointer() != nullptr;
 }

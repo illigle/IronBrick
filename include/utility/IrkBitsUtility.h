@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -19,15 +19,15 @@
 #ifdef _MSC_VER
 
 extern "C" {
-unsigned char _bittest( long const*, long );
-unsigned char _bittestandset( long*, long );
-unsigned char _bittestandreset( long*, long );
-unsigned char _bittestandcomplement( long*, long );
-unsigned char _BitScanForward( unsigned long*, unsigned long );
-unsigned char _BitScanReverse( unsigned long*, unsigned long );
-unsigned short _byteswap_ushort( unsigned short );
-unsigned long _byteswap_ulong( unsigned long );
-unsigned __int64 _byteswap_uint64( unsigned __int64 );
+    unsigned char _bittest(long const*, long);
+    unsigned char _bittestandset(long*, long);
+    unsigned char _bittestandreset(long*, long);
+    unsigned char _bittestandcomplement(long*, long);
+    unsigned char _BitScanForward(unsigned long*, unsigned long);
+    unsigned char _BitScanReverse(unsigned long*, unsigned long);
+    unsigned short _byteswap_ushort(unsigned short);
+    unsigned long _byteswap_ulong(unsigned long);
+    unsigned __int64 _byteswap_uint64(unsigned __int64);
 }
 #pragma intrinsic( _bittest, _bittestandset, _bittestandreset, _bittestandcomplement )
 #pragma intrinsic( _BitScanForward, _BitScanReverse )
@@ -35,12 +35,12 @@ unsigned __int64 _byteswap_uint64( unsigned __int64 );
 
 #ifdef _M_X64
 extern "C" {
-    unsigned char _bittest64( __int64 const*, __int64 );
-    unsigned char _bittestandset64( __int64*, __int64 );
-    unsigned char _bittestandreset64( __int64*, __int64 );
-    unsigned char _bittestandcomplement64( __int64*, __int64 );
-    unsigned char _BitScanForward64( unsigned long*, unsigned __int64 );
-    unsigned char _BitScanReverse64( unsigned long*, unsigned __int64 );
+    unsigned char _bittest64(__int64 const*, __int64);
+    unsigned char _bittestandset64(__int64*, __int64);
+    unsigned char _bittestandreset64(__int64*, __int64);
+    unsigned char _bittestandcomplement64(__int64*, __int64);
+    unsigned char _BitScanForward64(unsigned long*, unsigned __int64);
+    unsigned char _BitScanReverse64(unsigned long*, unsigned __int64);
 }
 #pragma intrinsic( _bittest64, _bittestandset64, _bittestandreset64, _bittestandcomplement64 )
 #pragma intrinsic( _BitScanForward64, _BitScanReverse64 )
@@ -103,62 +103,62 @@ namespace irk {
 #ifdef _MSC_VER
 
 // return specified bit
-__forceinline uint8_t bit_get( uint32_t val, int idx )
+__forceinline uint8_t bit_get(uint32_t val, int idx)
 {
-    return _bittest( (const long*)&val, idx );
+    return _bittest((const long*)&val, idx);
 }
-__forceinline uint8_t bit_get( int32_t val, int idx )
+__forceinline uint8_t bit_get(int32_t val, int idx)
 {
-    return _bittest( (const long*)&val, idx );
+    return _bittest((const long*)&val, idx);
 }
 // set specified bit
-__forceinline void bit_set( uint32_t* pval, int idx )
+__forceinline void bit_set(uint32_t* pval, int idx)
 {
     *pval |= (1u << idx);
 }
 // reset specified bit
-__forceinline void bit_reset( uint32_t* pval, int idx )
+__forceinline void bit_reset(uint32_t* pval, int idx)
 {
     *pval &= ~(1u << idx);
 }
 // complement specified bit
-__forceinline void bit_flip( uint32_t* pval, int idx )
+__forceinline void bit_flip(uint32_t* pval, int idx)
 {
     *pval ^= (1u << idx);
 }
 
 // set specified bit and return old bit
-__forceinline uint8_t bit_get_set( uint32_t* pval, int idx )
+__forceinline uint8_t bit_get_set(uint32_t* pval, int idx)
 {
-    return _bittestandset( (long*)pval, idx );
+    return _bittestandset((long*)pval, idx);
 }
 // reset specified bit and return old bit
-__forceinline uint8_t bit_get_reset( uint32_t* pval, int idx )
+__forceinline uint8_t bit_get_reset(uint32_t* pval, int idx)
 {
-    return _bittestandreset( (long*)pval, idx );
+    return _bittestandreset((long*)pval, idx);
 }
 // complement specified bit and return old bit
-__forceinline uint8_t bit_get_flip( uint32_t* pval, int idx )
+__forceinline uint8_t bit_get_flip(uint32_t* pval, int idx)
 {
-    return _bittestandcomplement( (long*)pval, idx );
+    return _bittestandcomplement((long*)pval, idx);
 }
 
 // byte-swap
-__forceinline uint16_t byte_swap( uint16_t value )
+__forceinline uint16_t byte_swap(uint16_t value)
 {
-    return _byteswap_ushort( value );
+    return _byteswap_ushort(value);
 }
-__forceinline uint32_t byte_swap( uint32_t value )
+__forceinline uint32_t byte_swap(uint32_t value)
 {
-    return _byteswap_ulong( value );
+    return _byteswap_ulong(value);
 }
-__forceinline uint64_t byte_swap( uint64_t value )
+__forceinline uint64_t byte_swap(uint64_t value)
 {
-    return _byteswap_uint64( value );
+    return _byteswap_uint64(value);
 }
 
 // return MSB position of a set bit, if value == 0 return 32
-__forceinline int msb_index( uint32_t value )
+__forceinline int msb_index(uint32_t value)
 {
 #ifndef _M_X64
     _asm
@@ -169,21 +169,21 @@ __forceinline int msb_index( uint32_t value )
     }
 #else
     unsigned long msb;
-    unsigned char res = _BitScanReverse( &msb, value );
+    unsigned char res = _BitScanReverse(&msb, value);
     return (res != 0) ? static_cast<int>(msb) : 32;
 #endif
 }
 // ditto, but undefined if value == 0
-__forceinline int msb_index_unzero( uint32_t value )
+__forceinline int msb_index_unzero(uint32_t value)
 {
-    assert( value != 0 );
+    assert(value != 0);
     unsigned long msb;
-    _BitScanReverse( &msb, value );
+    _BitScanReverse(&msb, value);
     return static_cast<int>(msb);
 }
 
 // return LSB position of a set bit, if value == 0 return 32
-__forceinline int lsb_index( uint32_t value )
+__forceinline int lsb_index(uint32_t value)
 {
 #ifndef _M_X64
     _asm
@@ -194,109 +194,109 @@ __forceinline int lsb_index( uint32_t value )
     }
 #else
     unsigned long lsb;
-    unsigned char res = _BitScanForward( &lsb, value );
+    unsigned char res = _BitScanForward(&lsb, value);
     return (res != 0) ? static_cast<int>(lsb) : 32;
 #endif
 }
 // ditto, but undefined if value == 0
-__forceinline int lsb_index_unzero( uint32_t value )
+__forceinline int lsb_index_unzero(uint32_t value)
 {
-    assert( value != 0 );
+    assert(value != 0);
     unsigned long lsb;
-    _BitScanForward( &lsb, value );
+    _BitScanForward(&lsb, value);
     return static_cast<int>(lsb);
 }
 
 // return the minimum bits count required to store value
-__forceinline int bit_mincnt( uint32_t value )
+__forceinline int bit_mincnt(uint32_t value)
 {
     unsigned long msb = 0;
-    if( value != 0 )
-        _BitScanReverse( &msb, value );
+    if (value != 0)
+        _BitScanReverse(&msb, value);
     return static_cast<int>(1 + msb);
 }
 
 #ifdef _M_X64   // WIN64
 
 // return specified bit
-__forceinline uint8_t bit_get( uint64_t val, int idx )
+__forceinline uint8_t bit_get(uint64_t val, int idx)
 {
-    return _bittest64( (const __int64*)&val, idx );
+    return _bittest64((const __int64*)&val, idx);
 }
-__forceinline uint8_t bit_get( int64_t val, int idx )
+__forceinline uint8_t bit_get(int64_t val, int idx)
 {
-    return _bittest64( (const __int64*)&val, idx );
+    return _bittest64((const __int64*)&val, idx);
 }
 // set specified bit
-__forceinline void bit_set( uint64_t* pval, int idx )
+__forceinline void bit_set(uint64_t* pval, int idx)
 {
     *pval |= (1ull << idx);
 }
 // reset specified bit
-__forceinline void bit_reset( uint64_t* pval, int idx )
+__forceinline void bit_reset(uint64_t* pval, int idx)
 {
     *pval &= ~(1ull << idx);
 }
 // complement specified bit
-__forceinline void bit_flip( uint64_t* pval, int idx )
+__forceinline void bit_flip(uint64_t* pval, int idx)
 {
     *pval ^= (1ull << idx);
 }
 
 // set specified bit and return old bit
-__forceinline uint8_t bit_get_set( uint64_t* pval, int idx )
+__forceinline uint8_t bit_get_set(uint64_t* pval, int idx)
 {
-    return _bittestandset64( (__int64*)pval, idx );
+    return _bittestandset64((__int64*)pval, idx);
 }
 // reset specified bit and return old bit
-__forceinline uint8_t bit_get_reset( uint64_t* pval, int idx )
+__forceinline uint8_t bit_get_reset(uint64_t* pval, int idx)
 {
-    return _bittestandreset64( (__int64*)pval, idx );
+    return _bittestandreset64((__int64*)pval, idx);
 }
 // complement specified bit and return old bit
-__forceinline uint8_t bit_get_flip( uint64_t* pval, int idx )
+__forceinline uint8_t bit_get_flip(uint64_t* pval, int idx)
 {
-    return _bittestandcomplement64( (__int64*)pval, idx );
+    return _bittestandcomplement64((__int64*)pval, idx);
 }
 
 // return MSB position of a set bit, if value == 0 return 64
-__forceinline int msb_index( uint64_t value )
+__forceinline int msb_index(uint64_t value)
 {
     unsigned long msb;
-    unsigned char res = _BitScanReverse64( &msb, value );
+    unsigned char res = _BitScanReverse64(&msb, value);
     return (res != 0) ? static_cast<int>(msb) : 64;
 }
 // ditto, but undefined if value == 0
-__forceinline int msb_index_unzero( uint64_t value )
+__forceinline int msb_index_unzero(uint64_t value)
 {
-    assert( value != 0 );
+    assert(value != 0);
     unsigned long msb;
-    _BitScanReverse64( &msb, value );
+    _BitScanReverse64(&msb, value);
     return static_cast<int>(msb);
 }
 
 // return LSB position of a set bit, if value == 0 return 64
-__forceinline int lsb_index( uint64_t value )
+__forceinline int lsb_index(uint64_t value)
 {
     unsigned long lsb;
-    unsigned char res = _BitScanForward64( &lsb, value );
+    unsigned char res = _BitScanForward64(&lsb, value);
     return (res != 0) ? static_cast<int>(lsb) : 64;
 }
 // ditto, but undefined if value == 0
-__forceinline int lsb_index_unzero( uint64_t value )
+__forceinline int lsb_index_unzero(uint64_t value)
 {
-    assert( value != 0 );
+    assert(value != 0);
     unsigned long lsb;
-    _BitScanForward64( &lsb, value );
+    _BitScanForward64(&lsb, value);
     return static_cast<int>(lsb);
 }
 
 // return the minimum bits count required to store value
-__forceinline int bit_mincnt( uint64_t value )
+__forceinline int bit_mincnt(uint64_t value)
 {
     unsigned long msb = 0;
-    if( value != 0 )
-        _BitScanReverse64( &msb, value );
+    if (value != 0)
+        _BitScanReverse64(&msb, value);
     return static_cast<int>(1 + msb);
 }
 
@@ -305,32 +305,32 @@ __forceinline int bit_mincnt( uint64_t value )
 #else   // GCC or Clang
 
 // return specified bit
-inline uint8_t bit_get( uint32_t val, int idx )
+inline uint8_t bit_get(uint32_t val, int idx)
 {
     return static_cast<uint8_t>((val >> idx) & 1);
 }
-inline uint8_t bit_get( int32_t val, int idx )
+inline uint8_t bit_get(int32_t val, int idx)
 {
     return static_cast<uint8_t>((val >> idx) & 1);
 }
 // set specified bit
-inline void bit_set( uint32_t* pval, int idx )
+inline void bit_set(uint32_t* pval, int idx)
 {
     *pval |= (1u << idx);
 }
 // reset specified bit
-inline void bit_reset( uint32_t* pval, int idx )
+inline void bit_reset(uint32_t* pval, int idx)
 {
     *pval &= ~(1u << idx);
 }
 // complement specified bit
-inline void bit_flip( uint32_t* pval, int idx )
+inline void bit_flip(uint32_t* pval, int idx)
 {
     *pval ^= (1u << idx);
 }
 
 // set specified bit and return old bit
-inline uint8_t bit_get_set( uint32_t* pval, int idx )
+inline uint8_t bit_get_set(uint32_t* pval, int idx)
 {
     uint8_t res;
     __asm__ __volatile__
@@ -344,7 +344,7 @@ inline uint8_t bit_get_set( uint32_t* pval, int idx )
     return res;
 }
 // reset specified bit and return old bit
-inline uint8_t bit_get_reset( uint32_t* pval, int idx )
+inline uint8_t bit_get_reset(uint32_t* pval, int idx)
 {
     uint8_t res;
     __asm__ __volatile__
@@ -358,7 +358,7 @@ inline uint8_t bit_get_reset( uint32_t* pval, int idx )
     return res;
 }
 // complement specified bit and return old bit
-inline uint8_t bit_get_flip( uint32_t* pval, int idx )
+inline uint8_t bit_get_flip(uint32_t* pval, int idx)
 {
     uint8_t res;
     __asm__ __volatile__
@@ -373,80 +373,80 @@ inline uint8_t bit_get_flip( uint32_t* pval, int idx )
 }
 
 // byte-swap
-inline uint16_t byte_swap( uint16_t value )
+inline uint16_t byte_swap(uint16_t value)
 {
     return ((value & 0xFF) << 8) | (value >> 8);
 }
-inline uint32_t byte_swap( uint32_t value )
+inline uint32_t byte_swap(uint32_t value)
 {
-    return __builtin_bswap32( value );
+    return __builtin_bswap32(value);
 }
-inline uint64_t byte_swap( uint64_t value )
+inline uint64_t byte_swap(uint64_t value)
 {
-    return __builtin_bswap64( value );
+    return __builtin_bswap64(value);
 }
 
 // return MSB position of a set bit, if value == 0 return 32
-inline int msb_index( uint32_t value )
+inline int msb_index(uint32_t value)
 {
-    return (value != 0) ? 31 - __builtin_clz( value ) : 32;
+    return (value != 0) ? 31 - __builtin_clz(value) : 32;
 }
 // ditto, but undefined if value == 0
-inline int msb_index_unzero( uint32_t value )
+inline int msb_index_unzero(uint32_t value)
 {
-    assert( value != 0 );
-    return 31 - __builtin_clz( value );
+    assert(value != 0);
+    return 31 - __builtin_clz(value);
 }
 
 // return LSB position of a set bit, if value == 0 return 32
-inline int lsb_index( uint32_t value )
+inline int lsb_index(uint32_t value)
 {
-    return (value != 0) ? __builtin_ctz( value ) : 32;
+    return (value != 0) ? __builtin_ctz(value) : 32;
 }
 // ditto, but undefined if value == 0
-inline int lsb_index_unzero( uint32_t value )
+inline int lsb_index_unzero(uint32_t value)
 {
-    assert( value != 0 );
-    return __builtin_ctz( value );
+    assert(value != 0);
+    return __builtin_ctz(value);
 }
 
 // return the minimum bits count required to store value
-inline int bit_mincnt( uint32_t value )
+inline int bit_mincnt(uint32_t value)
 {
-    if( value != 0 )
-        return 32 - __builtin_clz( value );
+    if (value != 0)
+        return 32 - __builtin_clz(value);
     return 1;
 }
 
 #ifdef __x86_64__       // Linux64
 
 // return specified bit
-inline uint8_t bit_get( uint64_t val, int idx )
+inline uint8_t bit_get(uint64_t val, int idx)
 {
     return static_cast<uint8_t>((val >> idx) & 1);
 }
-inline uint8_t bit_get( int64_t val, int idx )
+inline uint8_t bit_get(int64_t val, int idx)
 {
     return static_cast<uint8_t>((val >> idx) & 1);
 }
 // set specified bit
-inline void bit_set( uint64_t* pval, int idx )
+inline void bit_set(uint64_t* pval, int idx)
 {
     *pval |= (1ull << idx);
 }
 // reset specified bit
-inline void bit_reset( uint64_t* pval, int idx )
+inline void bit_reset(uint64_t* pval, int idx)
 {
     *pval &= ~(1ull << idx);
 }
 // complement specified bit
-inline void bit_flip( uint64_t* pval, int idx )
+inline void bit_flip(uint64_t* pval, int idx)
 {
     *pval ^= (1ull << idx);
 }
 
 // set specified bit and return old bit
-inline uint8_t bit_get_set( uint64_t* pval, int idx )
+inline uint8_t bit_get_set(uint64_t* pval, int idx)
 {
     uint8_t res;
     __asm__ __volatile__
@@ -460,7 +460,7 @@ inline uint8_t bit_get_set( uint64_t* pval, int idx )
     return res;
 }
 // reset specified bit and return old bit
-inline uint8_t bit_get_reset( uint64_t* pval, int idx )
+inline uint8_t bit_get_reset(uint64_t* pval, int idx)
 {
     uint8_t res;
     __asm__ __volatile__
@@ -474,7 +474,7 @@ inline uint8_t bit_get_reset( uint64_t* pval, int idx )
     return res;
 }
 // complement specified bit and return old bit
-inline uint8_t bit_get_flip( uint64_t* pval, int idx )
+inline uint8_t bit_get_flip(uint64_t* pval, int idx)
 {
     uint8_t res;
     __asm__ __volatile__
@@ -489,34 +489,34 @@ inline uint8_t bit_get_flip( uint64_t* pval, int idx )
 }
 
 // return MSB position of a set bit, if value == 0 return 64
-inline int msb_index( uint64_t value )
+inline int msb_index(uint64_t value)
 {
-    return (value != 0) ? 63 - __builtin_clzll( value ) : 64;
+    return (value != 0) ? 63 - __builtin_clzll(value) : 64;
 }
 // ditto, but undefined if value == 0
-inline int msb_index_unzero( uint64_t value )
+inline int msb_index_unzero(uint64_t value)
 {
-    assert( value != 0 );
-    return 63 - __builtin_clzll( value );
+    assert(value != 0);
+    return 63 - __builtin_clzll(value);
 }
 
 // return LSB position of a set bit, if value == 0 return 64
-inline int lsb_index( uint64_t value )
+inline int lsb_index(uint64_t value)
 {
-    return (value != 0) ? __builtin_ctzll( value ) : 64;
+    return (value != 0) ? __builtin_ctzll(value) : 64;
 }
 // ditto, but undefined if value == 0
-inline int lsb_index_unzero( uint64_t value )
+inline int lsb_index_unzero(uint64_t value)
 {
-    assert( value != 0 );
-    return __builtin_ctzll( value );
+    assert(value != 0);
+    return __builtin_ctzll(value);
 }
 
 // return the minimum bits count required to store value
-inline int bit_mincnt( uint64_t value )
+inline int bit_mincnt(uint64_t value)
 {
-    if( value != 0 )
-        return 64 - __builtin_clzll( value );
+    if (value != 0)
+        return 64 - __builtin_clzll(value);
     return 1;
 }
 #endif  // __x86_64__
@@ -531,13 +531,13 @@ class BitsReader : IrkNocopy
 {
 public:
     BitsReader() : m_pBuf(nullptr), m_pEnd(nullptr), m_pCur(nullptr), m_Offset(0) {}
-    BitsReader( const uint8_t* buff, size_t size, size_t offset = 0 )
+    BitsReader(const uint8_t* buff, size_t size, size_t offset = 0)
     {
-        this->set_buffer( buff, size, offset );
+        this->set_buffer(buff, size, offset);
     }
 
     // set read buffer, the buffer should have at least 4-byte padding
-    void set_buffer( const uint8_t* buff, size_t size, size_t offset = 0 )
+    void set_buffer(const uint8_t* buff, size_t size, size_t offset = 0)
     {
         m_pBuf = buff;
         m_pEnd = buff + size;
@@ -546,22 +546,22 @@ public:
     }
 
     // set current read offset( bits )
-    void set_offset( size_t offset )
+    void set_offset(size_t offset)
     {
-        assert( offset <= this->buffer_size() * 8 );
+        assert(offset <= this->buffer_size() * 8);
         m_pCur = m_pBuf + (offset >> 3);
         m_Offset = (uint32_t)(offset & 7);
     }
 
-    const uint8_t* buffer() const   { return m_pBuf; }
-    size_t buffer_size() const      { return (size_t)(m_pEnd - m_pBuf); }
-    size_t offset() const           { return (size_t)(m_pCur - m_pBuf) * 8 + m_Offset; }
+    const uint8_t* buffer() const { return m_pBuf; }
+    size_t buffer_size() const { return (size_t)(m_pEnd - m_pBuf); }
+    size_t offset() const { return (size_t)(m_pCur - m_pBuf) * 8 + m_Offset; }
 
     // is read buffer exhausted
-    bool exhausted() const          { return m_pCur >= m_pEnd; }
+    bool exhausted() const { return m_pCur >= m_pEnd; }
 
     // is current read position byte-aligned
-    bool byte_aligned() const       { return m_Offset == 0; }
+    bool byte_aligned() const { return m_Offset == 0; }
 
     // read from next byte-aligned position
     void make_byte_aligned()
@@ -571,10 +571,10 @@ public:
     }
 
     // read specified count of bits, requires bitCnt > 0 && bitCnt <= 25
-    uint32_t read_bits( uint32_t bitCnt )
+    uint32_t read_bits(uint32_t bitCnt)
     {
-        assert( bitCnt > 0 && bitCnt <= 25 );
-        uint32_t value = BE_READ32( m_pCur );
+        assert(bitCnt > 0 && bitCnt <= 25);
+        uint32_t value = BE_READ32(m_pCur);
         value = (value << m_Offset) >> (32 - bitCnt);
         m_Offset += bitCnt;
         m_pCur += m_Offset >> 3;
@@ -601,28 +601,28 @@ public:
     // read next 32 bits
     uint32_t read32()
     {
-        uint64_t value = BE_READ64( m_pCur );
+        uint64_t value = BE_READ64(m_pCur);
         value = (value << m_Offset) >> 32;
         m_pCur += 4;
         return static_cast<uint32_t>(value);
     }
     // read specified count of bits, requires bitCnt > 0 && bitCnt <= 56
-    uint32_t read_long_bits( uint32_t bitCnt )
+    uint32_t read_long_bits(uint32_t bitCnt)
     {
-        assert( bitCnt > 0 && bitCnt <= 56 );
-        uint64_t value = BE_READ64( m_pCur );
+        assert(bitCnt > 0 && bitCnt <= 56);
+        uint64_t value = BE_READ64(m_pCur);
         value = (value << m_Offset) >> (64 - bitCnt);
         m_Offset += bitCnt;
         m_pCur += m_Offset >> 3;
         m_Offset &= 7;
         return static_cast<uint32_t>(value);
     }
-    
+
     // check specified count of bits, requires bitCnt > 0 && bitCnt <= 25
-    uint32_t peek_bits( uint32_t bitCnt ) const
+    uint32_t peek_bits(uint32_t bitCnt) const
     {
-        assert( bitCnt > 0 && bitCnt <= 25 );
-        uint32_t value = BE_READ32( m_pCur );
+        assert(bitCnt > 0 && bitCnt <= 25);
+        uint32_t value = BE_READ32(m_pCur);
         return (value << m_Offset) >> (32 - bitCnt);
     }
     // check next one bit
@@ -640,21 +640,21 @@ public:
     // check next 32 bits
     uint32_t peek32() const
     {
-        uint64_t value = BE_READ64( m_pCur );
+        uint64_t value = BE_READ64(m_pCur);
         value = (value << m_Offset) >> 32;
         return static_cast<uint32_t>(value);
     }
     // check specified count of bits, requires bitCnt > 0 && bitCnt <= 56
-    uint32_t peek_long_bits( uint32_t bitCnt ) const
+    uint32_t peek_long_bits(uint32_t bitCnt) const
     {
-        assert( bitCnt > 0 && bitCnt <= 56 );
-        uint64_t value = BE_READ64( m_pCur );
+        assert(bitCnt > 0 && bitCnt <= 56);
+        uint64_t value = BE_READ64(m_pCur);
         value = (value << m_Offset) >> (64 - bitCnt);
         return static_cast<uint32_t>(value);
     }
 
     // skip specified bits
-    void skip_bits( uint32_t bitCnt )
+    void skip_bits(uint32_t bitCnt)
     {
         m_Offset += bitCnt;
         m_pCur += m_Offset >> 3;
@@ -707,62 +707,62 @@ protected:
 class BitsWriter : IrkNocopy
 {
 public:
-    explicit BitsWriter( int bitCapacity );
+    explicit BitsWriter(int bitCapacity);
     BitsWriter() : m_pBuf(nullptr), m_BitCapacity(0), m_BitCnt(0) {}
     ~BitsWriter() { delete[] m_pBuf; }
 
     // init/reset bits writer, clear existing data
     // NOTE: will free inner buffer if bitCapacity == 0
-    void reset( int bitCapacity );
+    void reset(int bitCapacity);
 
     // reserve capacity in bits, copy existing data to new buffer(if needed)
-    void reserve( int bitCapacity );
+    void reserve(int bitCapacity);
 
     // get inner buffer, return NULL if not allocated
-    const uint8_t* buffer() const   { return m_pBuf; }
+    const uint8_t* buffer() const { return m_pBuf; }
 
     // current bits count written
-    int bits() const                { return m_BitCnt; }
+    int bits() const { return m_BitCnt; }
 
     // current buffer capacity in bits
-    int capacity() const            { return m_BitCapacity; }
+    int capacity() const { return m_BitCapacity; }
 
     // clear existing data
     void clear();
 
     // write one bit(0/1)
-    void write1( uint8_t bit );
+    void write1(uint8_t bit);
 
     // write least bitCnt bits of value
-    void write_bits( uint32_t value, int bitCnt );
+    void write_bits(uint32_t value, int bitCnt);
 
     // write order 0 unsigned exp-golomb value, requires value < 0xFFFFFFFF
-    void write_ue( uint32_t value );
+    void write_ue(uint32_t value);
 
     // write order 0 signed exp-golomb value,
-    void write_se( int32_t value );
+    void write_se(int32_t value);
 
     // make next write positon byte aligned
-    void make_byte_aligned( uint8_t padding = 0 );
+    void make_byte_aligned(uint8_t padding = 0);
 
     // append bits
-    void append( const uint8_t* data, int bitCnt );
+    void append(const uint8_t* data, int bitCnt);
 
     // special function, take inner buffer, new onwner is responsible for buffer deallocaion
     uint8_t* take_buffer();
 
 protected:
-    uint8_t*    m_pBuf;  
+    uint8_t*    m_pBuf;
     int         m_BitCapacity;
     int         m_BitCnt;           // current written bits count
 };
 
 // write one bit(0/1)
-inline void BitsWriter::write1( uint8_t bit )
+inline void BitsWriter::write1(uint8_t bit)
 {
-    assert( bit == 0 || bit == 1 );
-    if( m_BitCnt + 1 > m_BitCapacity )
-        this->reserve( m_BitCapacity * 3 / 2 );
+    assert(bit == 0 || bit == 1);
+    if (m_BitCnt + 1 > m_BitCapacity)
+        this->reserve(m_BitCapacity * 3 / 2);
 
     int i = m_BitCnt >> 3;
     m_pBuf[i] |= bit << ((m_BitCnt & 7) ^ 7);
@@ -770,27 +770,27 @@ inline void BitsWriter::write1( uint8_t bit )
 }
 
 // write least bitCnt bits of value
-inline void BitsWriter::write_bits( uint32_t value, int bitCnt )
+inline void BitsWriter::write_bits(uint32_t value, int bitCnt)
 {
     // check buffer
-    assert( bitCnt > 0 && bitCnt <= 32 );
-    if( m_BitCnt + bitCnt > m_BitCapacity )
-        this->reserve( m_BitCapacity * 3 / 2 );
+    assert(bitCnt > 0 && bitCnt <= 32);
+    if (m_BitCnt + bitCnt > m_BitCapacity)
+        this->reserve(m_BitCapacity * 3 / 2);
 
     int j = 8 - (m_BitCnt & 7);
     uint8_t* dst = m_pBuf + (m_BitCnt >> 3);
     value <<= (32 - bitCnt);
     dst[0] |= (uint8_t)(value >> (32 - j));
-    BE_WRITE32( dst + 1, (value << j) );
+    BE_WRITE32(dst + 1, (value << j));
     m_BitCnt += bitCnt;
 }
 
 // make next write positon byte aligned
-inline void BitsWriter::make_byte_aligned( uint8_t padding )
+inline void BitsWriter::make_byte_aligned(uint8_t padding)
 {
-    if( m_BitCnt & 7 )
+    if (m_BitCnt & 7)
     {
-        if( padding != 0 && m_pBuf )
+        if (padding != 0 && m_pBuf)
         {
             int i = m_BitCnt >> 3;
             int j = 8 - (m_BitCnt & 7);

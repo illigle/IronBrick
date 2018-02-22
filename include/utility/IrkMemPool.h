@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -25,31 +25,31 @@ class MemSlots : IrkNocopy
 {
 public:
     MemSlots();
-    MemSlots( size_t itemSize, size_t maxCnt, size_t alignment = sizeof(void*) );
+    MemSlots(size_t itemSize, size_t maxCnt, size_t alignment = sizeof(void*));
     ~MemSlots() { this->clear(); }
 
     // initialize the memory slots, can be called many times
     // @param itemSize  The size of one item
     // @param maxCnt    The expected maximum item count
     // @param alignment Item alignment shall not greater than 16
-    void init( size_t itemSize, size_t maxCnt, size_t alignment = sizeof(void*) );
+    void init(size_t itemSize, size_t maxCnt, size_t alignment = sizeof(void*));
 
     // allocate an item
     void* alloc();
-    void* alloc( size_t size, size_t alignment )
+    void* alloc(size_t size, size_t alignment)
     {
-        irk_expect( size <= m_SlotSize && alignment <= m_Alignment );
-        (void)size; 
+        irk_expect(size <= m_SlotSize && alignment <= m_Alignment);
+        (void)size;
         (void)alignment;
         return this->alloc();
     }
 
     // deallocate an item
-    void dealloc( void* ptr );
-    void dealloc( void* ptr, size_t size )
+    void dealloc(void* ptr);
+    void dealloc(void* ptr, size_t size)
     {
         (void)size;
-        this->dealloc( ptr );
+        this->dealloc(ptr);
     }
 
     // free all memory
@@ -73,19 +73,19 @@ class MemChunks : IrkNocopy
 {
 public:
     MemChunks();
-    explicit MemChunks( size_t chunkSize );
+    explicit MemChunks(size_t chunkSize);
     ~MemChunks() { this->clear(); }
 
     // initialize the memory chuck, can be called many times
     // @param chunkSize The size of internal memory chunk
     // @param largeSize Should less than chunkSize / 2, item greater than largeSize will be allocated by new
-    void    init( size_t chunkSize, size_t largeSize = 0 );
+    void    init(size_t chunkSize, size_t largeSize = 0);
 
     // allocate a memory item, alignment shall not greater than 16
-    void*   alloc( size_t size, size_t alignment = sizeof(void*) );
+    void*   alloc(size_t size, size_t alignment = sizeof(void*));
 
     // NOTE: internal memory chunks will not be freed
-    void    dealloc( void*, size_t );
+    void    dealloc(void*, size_t);
 
     // free all memory
     void    clear();
@@ -107,20 +107,20 @@ class MemArena : IrkNocopy
 public:
     // @param buff  External initial buffer, if NULL, an initial buffer will be allocated
     // @param size  Initial buffer's size
-    MemArena( void* buff, size_t size );
+    MemArena(void* buff, size_t size);
     MemArena() : m_pBuff(nullptr), m_pFree(nullptr), m_BufSize(0), m_AllocCnt(0) {}
     ~MemArena();
 
     // initialize the memory arena, can be called many times
     // @param buff  External initial buffer, if NULL, an initial buffer will be allocated 
     // @param size  Initial buffer's size
-    void init( void* buff, size_t size );
+    void init(void* buff, size_t size);
 
     // allocate a memory item, alignment shall not greater than 16
-    void* alloc( size_t size, size_t alignment = sizeof(void*) );
+    void* alloc(size_t size, size_t alignment = sizeof(void*));
 
     // deallocate memory item
-    void dealloc( void* ptr, size_t size );
+    void dealloc(void* ptr, size_t size);
 
 private:
     char*       m_pBuff;
@@ -135,24 +135,24 @@ class MemPool : IrkNocopy
 {
 public:
     MemPool();
-    explicit MemPool( size_t chunkSize );
+    explicit MemPool(size_t chunkSize);
     ~MemPool();
 
     // initialize the memory pool, can be called many times
     // @param chunkSize The initial size of the memory pool
-    void init( size_t chunkSize );
+    void init(size_t chunkSize);
 
     // allocate a memory item, alignment shall not greater than 16
-    void* alloc( size_t size, size_t alignment = sizeof(void*) );
+    void* alloc(size_t size, size_t alignment = sizeof(void*));
 
     // deallocate memory item
-    void dealloc( void* ptr, size_t size );
+    void dealloc(void* ptr, size_t size);
 
     // free all memory
     void clear();
 
     // real buffer capacity for the requested size
-    size_t bucket_size( size_t size ) const;
+    size_t bucket_size(size_t size) const;
 
 private:
     static constexpr int kNumBucket = 10;
@@ -168,21 +168,21 @@ private:
 
 // create object from memory pool
 template<class Ty, class Pool, typename ...Args>
-inline Ty* irk_new( Pool& pool, Args&& ...args )
+inline Ty* irk_new(Pool& pool, Args&& ...args)
 {
-    void* mem = pool.alloc( sizeof(Ty), alignof(Ty) );
-    return ::new(mem) Ty( std::forward<Args>(args)... );
+    void* mem = pool.alloc(sizeof(Ty), alignof(Ty));
+    return ::new(mem) Ty(std::forward<Args>(args)...);
 }
 
 // delete object from memory pool
 // WARNING: Ty must be the real type, not the base type
 template<class Ty, class Pool>
-inline void irk_delete( Pool& pool, Ty* ptr )
+inline void irk_delete(Pool& pool, Ty* ptr)
 {
-    if( ptr )
+    if (ptr)
     {
         ptr->~Ty();
-        pool.dealloc( ptr, sizeof(Ty) );
+        pool.dealloc(ptr, sizeof(Ty));
     }
 }
 

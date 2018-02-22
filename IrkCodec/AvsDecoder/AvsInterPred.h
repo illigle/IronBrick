@@ -1,13 +1,13 @@
 ﻿/*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -49,7 +49,7 @@ struct BDColMvs
 struct RefPicture
 {
     DecFrame*   pframe;
-    uint8_t*    plane[3];  
+    uint8_t*    plane[3];
 };
 
 // 定义长方形区域 [x1, x2) x [y1, y2)
@@ -64,57 +64,57 @@ struct Rect
 // 得到运动矢量预测
 // abcMVS: 周边 block 的参考帧, 运动矢量等信息
 // refDist: 当前 block 参考距离
-MvUnion get_mv_pred( const MvInfo abcMVS[3], int refDist );
+MvUnion get_mv_pred(const MvInfo abcMVS[3], int refDist);
 
 // 同上
 // 针对周边 block 至少两个参考帧索引 >= 0 的情形
-MvUnion get_mv_pred2( const MvInfo abcMVS[3], int refDist );
+MvUnion get_mv_pred2(const MvInfo abcMVS[3], int refDist);
 
 // 16x16 亮度分量帧间预测
-void luma_inter_pred_16x16( FrmDecContext*, const RefPicture*, uint8_t* dst, int dstPitch, int x, int y );
+void luma_inter_pred_16x16(FrmDecContext*, const RefPicture*, uint8_t* dst, int dstPitch, int x, int y);
 
 // 16x8 亮度分量帧间预测
-void luma_inter_pred_16x8( FrmDecContext*, const RefPicture*, uint8_t* dst, int dstPitch, int x, int y );
+void luma_inter_pred_16x8(FrmDecContext*, const RefPicture*, uint8_t* dst, int dstPitch, int x, int y);
 
 // 8x16 亮度分量帧间预测
-void luma_inter_pred_8x16( FrmDecContext*, const RefPicture*, uint8_t* dst, int dstPitch, int x, int y );
+void luma_inter_pred_8x16(FrmDecContext*, const RefPicture*, uint8_t* dst, int dstPitch, int x, int y);
 
 // 8x8 亮度分量帧间预测
-void luma_inter_pred_8x8( FrmDecContext*, const RefPicture*, uint8_t* dst, int dstPitch, int x, int y );
+void luma_inter_pred_8x8(FrmDecContext*, const RefPicture*, uint8_t* dst, int dstPitch, int x, int y);
 
 // 8x8 色差分量帧间预测
-void chroma_inter_pred_8x8( FrmDecContext*, const RefPicture*, 
-                            uint8_t* dstCb, uint8_t* dstCr, int dstPitch, int x, int y );
+void chroma_inter_pred_8x8(FrmDecContext*, const RefPicture*,
+    uint8_t* dstCb, uint8_t* dstCr, int dstPitch, int x, int y);
 
 // 8x4 色差分量帧间预测
-void chroma_inter_pred_8x4( FrmDecContext*, const RefPicture*, 
-                            uint8_t* dstCb, uint8_t* dstCr, int dstPitch, int x, int y );
+void chroma_inter_pred_8x4(FrmDecContext*, const RefPicture*,
+    uint8_t* dstCb, uint8_t* dstCr, int dstPitch, int x, int y);
 
 // 4x8 色差分量帧间预测
-void chroma_inter_pred_4x8( FrmDecContext*, const RefPicture*, 
-                            uint8_t* dstCb, uint8_t* dstCr, int dstPitch, int x, int y );
+void chroma_inter_pred_4x8(FrmDecContext*, const RefPicture*,
+    uint8_t* dstCb, uint8_t* dstCr, int dstPitch, int x, int y);
 
 // 4x4 色差分量帧间预测
-void chroma_inter_pred_4x4( FrmDecContext*, const RefPicture*, 
-                            uint8_t* dstCb, uint8_t* dstCr, int dstPitch, int x, int y );
+void chroma_inter_pred_4x4(FrmDecContext*, const RefPicture*,
+    uint8_t* dstCb, uint8_t* dstCr, int dstPitch, int x, int y);
 
 // 加权预测, 16x16, 16x8
-void weight_pred_16xN( uint8_t* dst, int pitch, int scale, int delta, int N );
+void weight_pred_16xN(uint8_t* dst, int pitch, int scale, int delta, int N);
 
 // 加权预测, 8x16, 8x8, 8x4
-void weight_pred_8xN( uint8_t* dst, int pitch, int scale, int delta, int N );
+void weight_pred_8xN(uint8_t* dst, int pitch, int scale, int delta, int N);
 
 // 加权预测, 4x8, 4x4
-void weight_pred_4xN( uint8_t* dst, int pitch, int scale, int delta, int N );
+void weight_pred_4xN(uint8_t* dst, int pitch, int scale, int delta, int N);
 
 // 取平均, 16x16, 16x8
-void MC_avg_16xN( const uint8_t* src, int srcPitch, uint8_t* dst, int dstPitch, int N );
+void MC_avg_16xN(const uint8_t* src, int srcPitch, uint8_t* dst, int dstPitch, int N);
 
 // 取平均, 8x16, 8x8, 8x4
-void MC_avg_8xN( const uint8_t* src, int srcPitch, uint8_t* dst, int dstPitch, int N );
+void MC_avg_8xN(const uint8_t* src, int srcPitch, uint8_t* dst, int dstPitch, int N);
 
 // 取平均, 4x8, 4x4
-void MC_avg_4xN( const uint8_t* src, int srcPitch, uint8_t* dst, int dstPitch, int N );
+void MC_avg_4xN(const uint8_t* src, int srcPitch, uint8_t* dst, int dstPitch, int N);
 
 }   // namespace irk_avs_dec
 #endif

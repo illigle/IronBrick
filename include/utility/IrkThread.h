@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -29,7 +29,7 @@ public:
     static void yield();
 
     // sleep current thread for milliseconds
-    static void sleep( int milliseconds );
+    static void sleep(int milliseconds);
 
     explicit OSThread();
     virtual ~OSThread();
@@ -46,7 +46,7 @@ public:
 
     // wait thread eixt for at most specified milliseconds
     // if thread exited, close handle and return true
-    bool wait_exit( int milliseconds );
+    bool wait_exit(int milliseconds);
 
     // kill thread
     void kill();
@@ -56,17 +56,17 @@ public:
 
     // native thread handle
     void* native_handle() const { return m_hThread; }
-    
+
 private:
     virtual void thread_proc() = 0;     // OVERRIDE this method
 
     void* m_hThread;    // native thread handle
 
 #ifdef _WIN32
-    static unsigned __stdcall thread_routine( void* param );
+    static unsigned __stdcall thread_routine(void* param);
 #else
     SyncEvent m_evExited;
-    static void* thread_routine( void* param );
+    static void* thread_routine(void* param);
 #endif
 };
 

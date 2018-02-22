@@ -1,13 +1,13 @@
 ﻿/*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -70,7 +70,7 @@ struct IrkAvsDecedPic : IrkDecedPic
 // AVS+ coded stream basic information
 struct IrkAvsStreamInfo
 {
-    int     profile;     
+    int     profile;
     int     level;
     int     width;              // video width in pixels
     int     height;             // video height in pixels
@@ -104,22 +104,22 @@ extern "C" {
 
 // create AVS+ decoder
 // return NULL if failed(CPU does not support SSE, create internal threads failed)
-IRK_AVSDEC_EXPORT IrkAvsDecoder* irk_create_avs_decoder( const IrkAvsDecConfig* config );
+IRK_AVSDEC_EXPORT IrkAvsDecoder* irk_create_avs_decoder(const IrkAvsDecConfig* config);
 
 // destroy AVS+ decoder
 // all resource allocated by the decoder will be destoryed
-IRK_AVSDEC_EXPORT void irk_destroy_avs_decoder( IrkAvsDecoder* decoder );
+IRK_AVSDEC_EXPORT void irk_destroy_avs_decoder(IrkAvsDecoder* decoder);
 
 // reset AVS+ decoder(before decoding new bitstream)
 // if "resetAll" == false, global setting such as sequece header will not be reset
-IRK_AVSDEC_EXPORT void irk_avs_decoder_reset( IrkAvsDecoder* decoder, bool resetAll );
+IRK_AVSDEC_EXPORT void irk_avs_decoder_reset(IrkAvsDecoder* decoder, bool resetAll);
 
 // set decoding notify callback
 // when got IRK_CODEC_DONE code, notify data point to IrkAvsDecedPic struct
-IRK_AVSDEC_EXPORT void irk_avs_decoder_set_notify( IrkAvsDecoder* decoder, PFN_CodecNotify callback, void* cbparam );
+IRK_AVSDEC_EXPORT void irk_avs_decoder_set_notify(IrkAvsDecoder* decoder, PFN_CodecNotify callback, void* cbparam);
 
 // set skip mode, if "skip_mode" != 0, skip non-reference pictures
-IRK_AVSDEC_EXPORT void irk_avs_decoder_set_skip( IrkAvsDecoder* decoder, int skip_mode );
+IRK_AVSDEC_EXPORT void irk_avs_decoder_set_skip(IrkAvsDecoder* decoder, int skip_mode);
 
 #define IRK_AVS_DEC_BAD_STREAM  -1
 #define IRK_AVS_DEC_UNAVAILABLE -2
@@ -131,19 +131,19 @@ IRK_AVSDEC_EXPORT void irk_avs_decoder_set_skip( IrkAvsDecoder* decoder, int ski
 // NOTE 1: decoded picture will be send to user by the notify callback,
 //          notify callback will always be called in the thread calling this function
 // NOTE 2: input NULL will flush cached pictures
-IRK_AVSDEC_EXPORT int irk_avs_decoder_decode( IrkAvsDecoder* decoder, const IrkCodedPic* encPic );
+IRK_AVSDEC_EXPORT int irk_avs_decoder_decode(IrkAvsDecoder* decoder, const IrkCodedPic* encPic);
 
 // get AVS+ stream basic infomation
 // if succeeded return 0, if failed return negtive error code(see above)
-IRK_AVSDEC_EXPORT int irk_avs_decoder_get_info( IrkAvsDecoder* decoder, IrkAvsStreamInfo* pinfo );
+IRK_AVSDEC_EXPORT int irk_avs_decoder_get_info(IrkAvsDecoder* decoder, IrkAvsStreamInfo* pinfo);
 
 // normally decoded picture is only valid in notify callback function,
 // in case user wants to use decoded picture outside callback function, 
 // user can either use custom memory allocator or retain the decoded picture
-IRK_AVSDEC_EXPORT void irk_avs_decoder_retain_picture( IrkAvsDecedPic* pic );
+IRK_AVSDEC_EXPORT void irk_avs_decoder_retain_picture(IrkAvsDecedPic* pic);
 
 // retained picture must be released before decoder destroyed
-IRK_AVSDEC_EXPORT void irk_avs_decoder_dismiss_picture( IrkAvsDecedPic* pic );
+IRK_AVSDEC_EXPORT void irk_avs_decoder_dismiss_picture(IrkAvsDecedPic* pic);
 
 #ifdef __cplusplus
 }

@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -37,10 +37,10 @@ struct DirEntry
     // file extension
     const char* extension() const
     {
-        if( this->is_file() )
+        if (this->is_file())
         {
-            const char* dot = ::strrchr( this->name, '.' );
-            if( dot && dot != this->name )
+            const char* dot = ::strrchr(this->name, '.');
+            if (dot && dot != this->name)
                 return dot;
         }
         return "";
@@ -50,40 +50,40 @@ struct DirEntry
 class DirWalker : IrkNocopy
 {
 public:
-    explicit DirWalker( const char* dirPath );
+    explicit DirWalker(const char* dirPath);
     ~DirWalker();
-    DirWalker( DirWalker&& other ) noexcept;
-    DirWalker& operator=( DirWalker&& other ) noexcept;
+    DirWalker(DirWalker&& other) noexcept;
+    DirWalker& operator=(DirWalker&& other) noexcept;
 
     // check dir opened
     explicit operator bool() const  { return m_pWalker != nullptr; }
     bool is_opened() const          { return m_pWalker != nullptr; }
-    
+
     // rewind to the beginning of the dir
     bool rewind();
 
     // get next entry,
     // if no more entry exists or an error occured, NULL is returned
     // if error occured and perr != NULL, *perr = native system error code
-    const DirEntry* next_entry( int* perr = nullptr );
+    const DirEntry* next_entry(int* perr = nullptr);
 
     // uncanonical iterator, use with ranged-for
     class Iterator
     {
     public:
         typedef const DirEntry* value_type;
-        bool operator==( const Iterator& other ) const  { return m_entry == other.m_entry; }
-        bool operator!=( const Iterator& other ) const  { return m_entry != other.m_entry; }
+        bool operator==(const Iterator& other) const { return m_entry == other.m_entry; }
+        bool operator!=(const Iterator& other) const { return m_entry != other.m_entry; }
         Iterator& operator++()
         {
-            if( m_entry ) { m_entry = m_walker->next_entry(); }
+            if (m_entry) { m_entry = m_walker->next_entry(); }
             return *this;
         }
         const DirEntry* operator*() const { return m_entry; }
     private:
         friend DirWalker;
         Iterator() : m_walker(nullptr), m_entry(nullptr) {}
-        Iterator( DirWalker* walker ) : m_walker(walker), m_entry(walker->next_entry()) {}
+        Iterator(DirWalker* walker) : m_walker(walker), m_entry(walker->next_entry()) {}
         DirWalker*      m_walker;
         const DirEntry* m_entry;
     };
@@ -111,10 +111,10 @@ struct DirEntryW
     // file extension
     const wchar_t* extension() const
     {
-        if( this->is_file() )
+        if (this->is_file())
         {
-            const wchar_t* dot = ::wcsrchr( this->name, '.' );
-            if( dot && dot != this->name )
+            const wchar_t* dot = ::wcsrchr(this->name, '.');
+            if (dot && dot != this->name)
                 return dot;
         }
         return L"";
@@ -124,40 +124,40 @@ struct DirEntryW
 class DirWalkerW : IrkNocopy
 {
 public:
-    explicit DirWalkerW( const wchar_t* dirPath );
+    explicit DirWalkerW(const wchar_t* dirPath);
     ~DirWalkerW();
-    DirWalkerW( DirWalkerW&& other ) noexcept;
-    DirWalkerW& operator=( DirWalkerW&& other ) noexcept;
+    DirWalkerW(DirWalkerW&& other) noexcept;
+    DirWalkerW& operator=(DirWalkerW&& other) noexcept;
 
     // check dir opened
     explicit operator bool() const  { return m_pWalker != nullptr; }
     bool is_opened() const          { return m_pWalker != nullptr; }
-    
+
     // rewind to the beginning of the dir
     bool rewind();
 
     // get next entry,
     // if no more entry exists or an error occured, NULL is returned
     // if error occured and perr != NULL, *perr = native system error code
-    const DirEntryW* next_entry( int* perr = nullptr );
+    const DirEntryW* next_entry(int* perr = nullptr);
 
     // uncanonical iterator, use with ranged-for
     class Iterator
     {
     public:
         typedef const DirEntryW* value_type;
-        bool operator==( const Iterator& other ) const  { return m_entry == other.m_entry; }
-        bool operator!=( const Iterator& other ) const  { return m_entry != other.m_entry; }
+        bool operator==(const Iterator& other) const { return m_entry == other.m_entry; }
+        bool operator!=(const Iterator& other) const { return m_entry != other.m_entry; }
         Iterator& operator++()
         {
-            if( m_entry ) { m_entry = m_walker->next_entry(); }
+            if (m_entry) { m_entry = m_walker->next_entry(); }
             return *this;
         }
         const DirEntryW* operator*() const { return m_entry; }
     private:
         friend DirWalkerW;
         Iterator() : m_walker(nullptr), m_entry(nullptr) {}
-        Iterator( DirWalkerW* walker ) : m_walker(walker), m_entry(walker->next_entry()) {}
+        Iterator(DirWalkerW* walker) : m_walker(walker), m_entry(walker->next_entry()) {}
         DirWalkerW*      m_walker;
         const DirEntryW* m_entry;
     };

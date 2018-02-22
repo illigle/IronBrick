@@ -1,13 +1,13 @@
 ﻿/*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -27,11 +27,11 @@ struct IrkMemBlock
 
 // prototype of codec's custom memory allocator callback
 // "cbparam": callback parameter set by user
-typedef IrkMemBlock (*PFN_CodecAlloc)( size_t size, size_t alignment, void* cbparam );
+typedef IrkMemBlock (*PFN_CodecAlloc)(size_t size, size_t alignment, void* cbparam);
 
 // prototype of codec's custom memory deallocator callback
 // "cbparam": callback parameter set by user
-typedef void (*PFN_CodecDealloc)( IrkMemBlock* memblock, void* cbparam );
+typedef void (*PFN_CodecDealloc)(IrkMemBlock* memblock, void* cbparam);
 
 // encoded/compressed bitstream picture
 struct IrkCodedPic
@@ -58,7 +58,7 @@ struct IrkDecedPic
 
 // prototype of codec's event notify callback
 // "cbparam": callback parameter set by user
-typedef void (*PFN_CodecNotify)( int code, void* data, void* cbparam );
+typedef void (*PFN_CodecNotify)(int code, void* data, void* cbparam);
 
 // codec's notify code: encode/decode one picture succeeded
 #define IRK_CODEC_DONE      0

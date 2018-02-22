@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -71,24 +71,24 @@ std::wstring get_curr_dir_ws();
 #endif
 
 // get environment variable, return empty string if failed
-std::string get_envar( const char* name );
-std::u16string get_envar( const char16_t* name );
+std::string get_envar(const char* name);
+std::u16string get_envar(const char16_t* name);
 
 // modify/insert environment variable, return false if failed
 // if value == NULL, remove the environment variable
 // NOTE: It affects only the environment local to current process, has no effect on system environment variables
-bool set_envar( const char* name, const char* value );
-bool set_envar( const char16_t* name, const char16_t* value );
+bool set_envar(const char* name, const char* value);
+bool set_envar(const char16_t* name, const char16_t* value);
 
 // remove environment variable, return false if failed
 // NOTE: It affects only the environment local to current process, has no effect on system environment variables
-bool remove_envar( const char* name );
-bool remove_envar( const char16_t* name );
+bool remove_envar(const char* name);
+bool remove_envar(const char16_t* name);
 
 #ifdef _WIN32
-std::wstring get_envar( const wchar_t* name );
-bool set_envar( const wchar_t* name, const wchar_t* value );
-bool remove_envar( const wchar_t* name );
+std::wstring get_envar(const wchar_t* name);
+bool set_envar(const wchar_t* name, const wchar_t* value);
+bool remove_envar(const wchar_t* name);
 #endif
 
 }   // namespace irk

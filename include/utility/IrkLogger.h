@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -35,27 +35,27 @@ public:
     virtual ~Logger() {}
 
     // Syntax is the same as vprintf, the first parameter is criticality level, see above
-    virtual void vlog( int /*level*/, const char* /*fmt*/, va_list ) = 0;
+    virtual void vlog(int /*level*/, const char* /*fmt*/, va_list) = 0;
 
     // Optional wchar_t version
-    virtual void vlog( int /*level*/, const wchar_t* /*fmt*/, va_list ) {}
+    virtual void vlog(int /*level*/, const wchar_t* /*fmt*/, va_list) {}
 
     // Syntax is the same as printf
-    void log( int level, const char* fmt, ... )
+    void log(int level, const char* fmt, ...)
     {
         va_list args;
-        va_start( args, fmt );
-        this->vlog( level, fmt, args );
-        va_end( args );
+        va_start(args, fmt);
+        this->vlog(level, fmt, args);
+        va_end(args);
     }
 
     // Optional wchar_t version
-    void log( int level, const wchar_t* fmt, ... )
+    void log(int level, const wchar_t* fmt, ...)
     {
         va_list args;
-        va_start( args, fmt );
-        this->vlog( level, fmt, args );
-        va_end( args );
+        va_start(args, fmt);
+        this->vlog(level, fmt, args);
+        va_end(args);
     }
 };
 
@@ -66,22 +66,22 @@ public:
 class DumbLogger : public Logger
 {
 public:
-    void vlog( int, const char*, va_list ) override {}
+    void vlog(int, const char*, va_list) override {}
 };
 
 // Simple stdio logger: log to stdout or stderr
 class StdLogger : public Logger
 {
 public:
-    void vlog( int level, const char* fmt, va_list args ) override
+    void vlog(int level, const char* fmt, va_list args) override
     {
         FILE* stdfp = (level >= IRK_LOG_WARNING) ? stderr : stdout;
-        vfprintf( stdfp, fmt, args );
+        ::vfprintf(stdfp, fmt, args);
     }
-    void vlog( int level, const wchar_t* fmt, va_list args ) override
+    void vlog(int level, const wchar_t* fmt, va_list args) override
     {
         FILE* stdfp = (level >= IRK_LOG_WARNING) ? stderr : stdout;
-        vfwprintf( stdfp, fmt, args );
+        ::vfwprintf(stdfp, fmt, args);
     }
 };
 
@@ -92,8 +92,8 @@ public:
     // if error, print in red
     // if warning, print in yellow
     // otherwise, print in default color
-    void vlog( int level, const char* fmt, va_list ) override;
-    void vlog( int level, const wchar_t* fmt, va_list ) override;
+    void vlog(int level, const char* fmt, va_list) override;
+    void vlog(int level, const wchar_t* fmt, va_list) override;
 private:
     std::mutex m_Mutex;
 };
@@ -106,18 +106,18 @@ public:
     ~FileLogger() { this->close(); }
 
     // open log file, return false if open file failed or already opened
-    bool open( const char* filePath );
+    bool open(const char* filePath);
 
     // close log file
     void close();
 
-    void vlog( int level, const char* fmt, va_list ) override;
+    void vlog(int level, const char* fmt, va_list) override;
 
     // wchar_t version on Windows, save as UTF-8 file
     // WARNING: do NOT mix use of [char] version's methods !
 #ifdef _WIN32
-    bool open( const wchar_t* filePath );
-    void vlog( int level, const wchar_t* fmt, va_list ) override;
+    bool open(const wchar_t* filePath);
+    void vlog(int level, const wchar_t* fmt, va_list) override;
 #endif
 private:
     FILE*       m_pFile;
@@ -131,9 +131,9 @@ public:
     // open log file, will delete log files two months ago
     // @param logFolder   The folder in which log files created
     // @param filePrefix  The whole log file name will be filePrefix-month.log
-    bool open( const char* logFolder, const char* filePrefix );
+    bool open(const char* logFolder, const char* filePrefix);
 #ifdef _WIN32
-    bool open( const wchar_t* logFolder, const wchar_t* filePrefix );
+    bool open(const wchar_t* logFolder, const wchar_t* filePrefix);
 #endif
 };
 

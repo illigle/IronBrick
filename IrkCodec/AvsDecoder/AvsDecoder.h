@@ -1,13 +1,13 @@
 ﻿/*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -28,7 +28,8 @@
 
 // opaque AVS+ decoder
 struct IrkAvsDecoder
-{};
+{
+};
 
 // 解码器允许的最大内部线程数, 如果创建的线程太多, 可能影响到系统其他模块, 同时占用过多内存
 #define MAX_THEAD_CNT 16
@@ -43,7 +44,7 @@ class  FrmCtxFactory;
 
 extern const int32_t g_DequantScale[64];
 extern const uint8_t g_DequantShift[64];
-extern const uint8_t g_ChromaQp[64+16];
+extern const uint8_t g_ChromaQp[64 + 16];
 
 //======================================================================================================================
 
@@ -61,41 +62,41 @@ struct DecodingState
 public:
     DecodingState() : m_lineReady(0), m_reqCnt(0), m_doneEvt(true)
     {
-        memset( m_reqList, 0, sizeof(m_reqList) );
+        memset(m_reqList, 0, sizeof(m_reqList));
     }
     ~DecodingState()
     {
-        assert( m_reqCnt == 0 );
+        assert(m_reqCnt == 0);
     }
 
     // 更新当前帧解码进度
-    void update_state( int line );
+    void update_state(int line);
 
     // 添加参考数据请求, 等待请求满足
-    void wait_request( RefDataReq* req );
+    void wait_request(RefDataReq* req);
 
     // 标识当前帧解码完成, 所有请求者返回
     void set_frame_done()
     {
-        this->update_state( INT32_MAX );
+        this->update_state(INT32_MAX);
         m_doneEvt.set();
-        assert( m_reqCnt == 0 );
+        assert(m_reqCnt == 0);
     }
 
     // 等待当前帧解码完成
     void wait_frame_done()
     {
-        if( m_lineReady != INT32_MAX )
+        if (m_lineReady != INT32_MAX)
             m_doneEvt.wait();
-        assert( m_reqCnt == 0 );
+        assert(m_reqCnt == 0);
     }
 
     void reset()
     {
-        assert( m_reqCnt == 0 ); 
+        assert(m_reqCnt == 0);
         m_lineReady = 0;
         m_reqCnt = 0;
-        memset( m_reqList, 0, sizeof(m_reqList) );
+        memset(m_reqList, 0, sizeof(m_reqList));
         m_doneEvt.reset();
     }
 
@@ -116,17 +117,17 @@ public:
     ~FrameFactory();
 
     // 设置自定义内存分配函数
-    void set_alloc_callback( PFN_CodecAlloc pfnAlloc, void* cbparam );
-    void set_dealloc_callback( PFN_CodecDealloc pfnDealloc, void* cbparam );
+    void set_alloc_callback(PFN_CodecAlloc pfnAlloc, void* cbparam);
+    void set_dealloc_callback(PFN_CodecDealloc pfnDealloc, void* cbparam);
 
     // 配置视频帧大小
-    bool config( int width, int height, int chromaFmt );
+    bool config(int width, int height, int chromaFmt);
 
     // 创建一帧 DecFrame, isRef: 是否为参考帧
-    DecFrame* create( bool isRef );
+    DecFrame* create(bool isRef);
 
     // 丢弃 DecFrame
-    void discard( DecFrame* pFrame );
+    void discard(DecFrame* pFrame);
 
 private:
     static const int kCacheSize = MAX_THEAD_CNT;
@@ -163,13 +164,13 @@ struct DecFrame : IrkAvsDecedPic
 {
     void add_ref()
     {
-        irk::atomic_inc( &refCnt );
+        irk::atomic_inc(&refCnt);
     }
     void dismiss()
     {
-        assert( refCnt > 0 && factory != nullptr );
-        if( irk::atomic_dec( &refCnt ) == 0 )
-            factory->discard( this );
+        assert(refCnt > 0 && factory != nullptr);
+        if (irk::atomic_dec(&refCnt) == 0)
+            factory->discard(this);
     }
 
     uint8_t         frameCoding;        // 0: 场编码, 1: 帧编码
@@ -213,10 +214,10 @@ typedef irk::Vector<uint8_t> DataVector;
 // 异步解码任务
 class FrmDecTask : public irk::IAsyncTask
 {
-    typedef void (*PFN_DecFrame)( FrmDecContext* ctx );
+    typedef void(*PFN_DecFrame)(FrmDecContext* ctx);
 public:
     FrmDecTask() : m_pfnDecFrame(nullptr), m_frameCtx(nullptr) {}
-    void config( PFN_DecFrame pfnDec, FrmDecContext* ctx );
+    void config(PFN_DecFrame pfnDec, FrmDecContext* ctx);
     void work() override;
 private:
     PFN_DecFrame    m_pfnDecFrame;
@@ -259,7 +260,7 @@ struct FrmDecContext
     int*            denDist;            // 512 / BlockDistance
     int             backIdxXor;         // 用以得到后向参考帧索引
     int             backMvScale[4];     // B 帧后向预测缩放系数
-    
+
     AvsBitStream    bitsm;              // 码流读取器
     AvsVlcParser*   vlcParser;          // 变长编码解析器
     AvsAecParser*   aecParser;          // 高级熵编码解析器
@@ -304,7 +305,7 @@ public:
     FrmDecContext* create();
 
     // 丢弃单帧解码 context
-    void discard( FrmDecContext* frmCtx );
+    void discard(FrmDecContext* frmCtx);
 
 private:
     static const int kCacheSize = MAX_THEAD_CNT;
@@ -315,13 +316,13 @@ private:
 //======================================================================================================================
 
 // 帧内预测函数原型
-typedef void (*PFN_IntraPred)( uint8_t* dst, int pitch, NBUsable );
+typedef void(*PFN_IntraPred)(uint8_t* dst, int pitch, NBUsable);
 
 // slice 解码函数原型
-typedef void (*PFN_DecodeSlice)( FrmDecContext*, const uint8_t* data, int size );
+typedef void(*PFN_DecodeSlice)(FrmDecContext*, const uint8_t* data, int size);
 
 // macroblock 解码函数原型
-typedef void (*PFN_DecodeMB)( FrmDecContext*, int mx, int my );
+typedef void(*PFN_DecodeMB)(FrmDecContext*, int mx, int my);
 
 // 解码器状态
 #define AVS_SEQ_HDR_PARSED  1   // sequence header parsed
@@ -329,7 +330,7 @@ typedef void (*PFN_DecodeMB)( FrmDecContext*, int mx, int my );
 // 全局解码 context
 struct AvsContext : IrkAvsDecoder
 {
-    AvsContext( const IrkAvsDecConfig* cfg, int sseVer );
+    AvsContext(const IrkAvsDecConfig* cfg, int sseVer);
     ~AvsContext();
 
     // 解码器初始化
@@ -342,7 +343,7 @@ struct AvsContext : IrkAvsDecoder
     int             sseVersion;             // CPU 支持的 SSE/AVX 版本
     PFN_CodecNotify pfnNotify;              // 解码回调函数
     void*           notifyParam;            // 解码回调函数用户私有数据
-    
+
     PFN_IntraPred   pfnLumaIPred[5];        // 亮度分量帧内预测函数
     PFN_IntraPred   pfnCbCrIPred[4];        // 色差分量帧内预测函数
     PFN_DecodeMB    pfnDecMbP[5];           // P 宏块解码函数

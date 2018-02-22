@@ -1,13 +1,13 @@
 ﻿/*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -25,7 +25,7 @@ struct VLCMap
 };
 
 // 帧内编码亮度宏块 VLC 表格
-static const struct VLCMap s_IntraVlcTab[7] = 
+static const struct VLCMap s_IntraVlcTab[7] =
 {
     {
         {
@@ -109,7 +109,7 @@ static const struct VLCMap s_IntraVlcTab[7] =
             {-1,  5,  0}, {7,  2,  0}, {-7,  2,  0}, {17, 1,  2}, {-17, 1,  2}
         },
         { 18, 8, 4, 2, 2 },
-        2, 
+        2,
         4,
     },
     {
@@ -149,10 +149,10 @@ static const struct VLCMap s_IntraVlcTab[7] =
 };
 
 // 根据当前 level 下一个 intra vlc map 索引
-static const uint8_t s_IntraNextIdx[16] = { 1, 1, 2, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 6, 6 };
+static const uint8_t s_IntraNextIdx[16] = {1, 1, 2, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 6, 6};
 
 // 帧间编码亮度宏块 VLC 表格
-static const struct VLCMap s_InterVlcTab[7] = 
+static const struct VLCMap s_InterVlcTab[7] =
 {
     {
         {
@@ -254,7 +254,7 @@ static const struct VLCMap s_InterVlcTab[7] =
         },
         { 17, 8, 4, 3, 2 },
         2,
-        4 
+        4
     },
     {
         {
@@ -279,7 +279,7 @@ static const struct VLCMap s_InterVlcTab[7] =
 static const uint8_t s_InterNextIdx[16] = {1, 1, 2, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 6, 6, 6};
 
 // 色差分量 VLC 表格
-static const struct VLCMap s_ChromaVlcTab[5] = 
+static const struct VLCMap s_ChromaVlcTab[5] =
 {
     {
         {
@@ -369,54 +369,54 @@ static const struct VLCMap s_ChromaVlcTab[5] =
 };
 
 //======================================================================================================================
-bool AvsVlcParser::dec_intra_coeff_block( int16_t* coeff, AvsBitStream& bitsm, int scale, uint8_t shift )
+bool AvsVlcParser::dec_intra_coeff_block(int16_t* coeff, AvsBitStream& bitsm, int scale, uint8_t shift)
 {
     int16_t levelAry[65];   // 最多 64 个系数 + EOB
     uint8_t runAry[65];
     const VLCMap* vlc = s_IntraVlcTab;
     int i = 0;
-    for( ; i < 65; i++ )
+    for (; i < 65; i++)
     {
-        int code = bitsm.read_egk( vlc->order );
-        if( code >= 59 )
+        int code = bitsm.read_egk(vlc->order);
+        if (code >= 59)
         {
             int run = (code - 59) >> 1;
             int msk = -(code & 1);                  // -1 or 0
-            int diff = bitsm.read_egk( 1 );         // escape_level_diff
+            int diff = bitsm.read_egk(1);         // escape_level_diff
             int level = diff + (run > vlc->maxRun ? 1 : vlc->refAbsLevel[run]);
             levelAry[i] = (level ^ msk) - msk;
             runAry[i] = run + 1;
-            if( level > 10 )
+            if (level > 10)
             {
                 vlc = s_IntraVlcTab + 6;
             }
             else
             {
                 const VLCMap* nextVlc = s_IntraVlcTab + s_IntraNextIdx[level];
-                if( nextVlc > vlc )     // 只前进不后退
+                if (nextVlc > vlc)     // 只前进不后退
                     vlc = nextVlc;
             }
         }
         else
         {
             int level = vlc->levelRunInc[code][0];
-            if( level == 0 )        // EOB
+            if (level == 0)        // EOB
                 break;
             levelAry[i] = level;
             runAry[i] = vlc->levelRunInc[code][1];
             vlc += vlc->levelRunInc[code][2];
         }
     }
-    if( i >= 65 )           // 码流错误
+    if (i >= 65)            // 码流错误
         return false;
-    
-    zero_block8x8( coeff );
+
+    zero_block8x8(coeff);
     int rnd = 1 << (shift - 1);
-    int k = -1;   
-    while( --i >= 0 )
+    int k = -1;
+    while (--i >= 0)
     {
         k += runAry[i];
-        if( k >= 64 )       // 码流错误
+        if (k >= 64)        // 码流错误
             return false;
         int idx = m_invScan[k];
         int tmp = ((levelAry[i] * m_weightQM[idx] >> 3) * scale) >> 4;
@@ -426,54 +426,54 @@ bool AvsVlcParser::dec_intra_coeff_block( int16_t* coeff, AvsBitStream& bitsm, i
     return true;
 }
 
-bool AvsVlcParser::dec_inter_coeff_block( int16_t* coeff, AvsBitStream& bitsm, int scale, uint8_t shift )
+bool AvsVlcParser::dec_inter_coeff_block(int16_t* coeff, AvsBitStream& bitsm, int scale, uint8_t shift)
 {
-    int16_t levelAry[65];   // 最多 64 个系数 + EOB
+    int16_t levelAry[65];       // 最多 64 个系数 + EOB
     uint8_t runAry[65];
     const VLCMap* vlc = s_InterVlcTab;
     int i = 0;
-    for( ; i < 65; i++ )
+    for (; i < 65; i++)
     {
-        int code = bitsm.read_egk( vlc->order );
-        if( code >= 59 )
+        int code = bitsm.read_egk(vlc->order);
+        if (code >= 59)
         {
             int run = (code - 59) >> 1;
             int msk = -(code & 1);              // -1 or 0
-            int diff = bitsm.read_egk( 0 );     // escape_level_diff
+            int diff = bitsm.read_egk(0);       // escape_level_diff
             int level = diff + (run > vlc->maxRun ? 1 : vlc->refAbsLevel[run]);
             levelAry[i] = (level ^ msk) - msk;
             runAry[i] = run + 1;
-            if( level > 9 )
+            if (level > 9)
             {
                 vlc = s_InterVlcTab + 6;
             }
             else
             {
                 const VLCMap* tmp = s_InterVlcTab + s_InterNextIdx[level];
-                if( tmp > vlc )     // 只前进不后退
+                if (tmp > vlc)      // 只前进不后退
                     vlc = tmp;
             }
         }
         else
         {
             int level = vlc->levelRunInc[code][0];
-            if( level == 0 )        // EOB
+            if (level == 0)         // EOB
                 break;
             levelAry[i] = level;
             runAry[i] = vlc->levelRunInc[code][1];
             vlc += vlc->levelRunInc[code][2];
         }
     }
-    if( i >= 65 )           // 码流错误
+    if (i >= 65)           // 码流错误
         return false;
 
-    zero_block8x8( coeff );
+    zero_block8x8(coeff);
     int rnd = 1 << (shift - 1);
-    int k = -1;   
-    while( --i >= 0 )
+    int k = -1;
+    while (--i >= 0)
     {
         k += runAry[i];
-        if( k >= 64 )       // 码流错误
+        if (k >= 64)        // 码流错误
             return false;
         int idx = m_invScan[k];
         int tmp = ((levelAry[i] * m_weightQM[idx] >> 3) * scale) >> 4;
@@ -483,57 +483,57 @@ bool AvsVlcParser::dec_inter_coeff_block( int16_t* coeff, AvsBitStream& bitsm, i
     return true;
 }
 
-bool AvsVlcParser::dec_chroma_coeff_block( int16_t* coeff, AvsBitStream& bitsm, int scale, uint8_t shift )
+bool AvsVlcParser::dec_chroma_coeff_block(int16_t* coeff, AvsBitStream& bitsm, int scale, uint8_t shift)
 {
     // 根据当前 level 下一个 chroma vlc map 索引
     static const uint8_t s_ChromaNextIdx[8] = {1, 1, 2, 3, 3, 4, 4, 4};
 
-    int16_t levelAry[65];   // 最多 64 个系数 + EOB
+    int16_t levelAry[65];       // 最多 64 个系数 + EOB
     uint8_t runAry[65];
     const VLCMap* vlc = s_ChromaVlcTab;
     int i = 0;
-    for( ; i < 65; i++ )
+    for (; i < 65; i++)
     {
-        int code = bitsm.read_egk( vlc->order );
-        if( code >= 59 )
+        int code = bitsm.read_egk(vlc->order);
+        if (code >= 59)
         {
             int run = (code - 59) >> 1;
-            int msk = -(code & 1);          // -1 or 0
-            int diff = bitsm.read_egk( 0 );      // escape_level_diff
+            int msk = -(code & 1);              // -1 or 0
+            int diff = bitsm.read_egk(0);       // escape_level_diff
             int level = diff + (run > vlc->maxRun ? 1 : vlc->refAbsLevel[run]);
             levelAry[i] = (level ^ msk) - msk;
             runAry[i] = run + 1;
-            if( level > 4 )
+            if (level > 4)
             {
                 vlc = s_ChromaVlcTab + 4;
             }
             else
             {
                 const VLCMap* tmp = s_ChromaVlcTab + s_ChromaNextIdx[level];
-                if( tmp > vlc )     // 只前进不后退
+                if (tmp > vlc)      // 只前进不后退
                     vlc = tmp;
             }
         }
         else
         {
             int level = vlc->levelRunInc[code][0];
-            if( level == 0 )        // EOB
+            if (level == 0)         // EOB
                 break;
             levelAry[i] = level;
             runAry[i] = vlc->levelRunInc[code][1];
             vlc += vlc->levelRunInc[code][2];
         }
     }
-    if( i >= 65 )           // 码流错误
+    if (i >= 65)            // 码流错误
         return false;
 
-    zero_block8x8( coeff );
+    zero_block8x8(coeff);
     int rnd = 1 << (shift - 1);
-    int k = -1;   
-    while( --i >= 0 )
+    int k = -1;
+    while (--i >= 0)
     {
         k += runAry[i];
-        if( k >= 64 )       // 码流错误
+        if (k >= 64)        // 码流错误
             return false;
         int idx = m_invScan[k];
         int tmp = ((levelAry[i] * m_weightQM[idx] >> 3) * scale) >> 4;

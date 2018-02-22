@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -33,16 +33,16 @@ public:
     class Guard
     {
     public:
-        explicit Guard( Mutex& mx ) { m_pMutex = &mx; mx.lock(); }
-        ~Guard()            { if( m_pMutex ) { m_pMutex->unlock(); } }
-        void unlock()       { if( m_pMutex ) { m_pMutex->unlock(); m_pMutex = nullptr; } }
+        explicit Guard(Mutex& mx) { m_pMutex = &mx; mx.lock(); }
+        ~Guard() { if (m_pMutex) { m_pMutex->unlock(); } }
+        void unlock() { if (m_pMutex) { m_pMutex->unlock(); m_pMutex = nullptr; } }
         Guard(const Guard&) = delete;
         Guard& operator=(const Guard&) = delete;
     private:
-        Mutex* m_pMutex;
+        Mutex * m_pMutex;
     };
 
-    void* native_handle()   
+    void* native_handle()
     {
 #ifdef _WIN32
         return (void*)&m_Handle;
@@ -68,7 +68,7 @@ public:
     void unlock();
 
     // Shared ownership, others can read but not write
-    void lock_shared(); 
+    void lock_shared();
     bool try_lock_shared();
     void unlock_shared();
 
@@ -76,29 +76,29 @@ public:
     class Guard
     {
     public:
-        explicit Guard( SharedMutex& mx )   { m_pMutex = &mx; mx.lock(); }
-        ~Guard()                            { if( m_pMutex ) m_pMutex->unlock(); }
-        void unlock()                       { if( m_pMutex ) { m_pMutex->unlock(); m_pMutex = nullptr; } }
+        explicit Guard(SharedMutex& mx) { m_pMutex = &mx; mx.lock(); }
+        ~Guard()        { if (m_pMutex) m_pMutex->unlock(); }
+        void unlock()   { if (m_pMutex) { m_pMutex->unlock(); m_pMutex = nullptr; } }
         Guard(const Guard&) = delete;
         Guard& operator=(const Guard&) = delete;
     private:
-        SharedMutex* m_pMutex;
+        SharedMutex * m_pMutex;
     };
 
     // similar to std::shared_lock
     class SharedGuard
     {
     public:
-        explicit SharedGuard( SharedMutex& mx ) { m_pMutex = &mx; mx.lock_shared(); }
-        ~SharedGuard()                          { if( m_pMutex ) { m_pMutex->unlock_shared(); } }
-        void unlock()                           { if( m_pMutex ) { m_pMutex->unlock_shared(); m_pMutex = nullptr; } }
+        explicit SharedGuard(SharedMutex& mx) { m_pMutex = &mx; mx.lock_shared(); }
+        ~SharedGuard()  { if (m_pMutex) { m_pMutex->unlock_shared(); } }
+        void unlock()   { if (m_pMutex) { m_pMutex->unlock_shared(); m_pMutex = nullptr; } }
         SharedGuard(const SharedGuard&) = delete;
         SharedGuard& operator=(const SharedGuard&) = delete;
     private:
-        SharedMutex* m_pMutex;
+        SharedMutex * m_pMutex;
     };
 
-    void* native_handle()   
+    void* native_handle()
     {
 #ifdef _WIN32
         return (void*)&m_Handle;
@@ -129,10 +129,10 @@ public:
     ~CondVar();
 
     // wait this condition variable notified
-    WaitStatus wait( Mutex& mx );
+    WaitStatus wait(Mutex& mx);
 
     // wait this condition variable notified, wait at most milliseconds
-    WaitStatus wait_for( Mutex& mx, int milliseconds );
+    WaitStatus wait_for(Mutex& mx, int milliseconds);
 
     // if any threads are waiting on this condition variable, unblocks one of the waiting threads
     void notify_one();
@@ -148,14 +148,14 @@ private:
 class SyncEvent : IrkNocopy
 {
 public:
-    explicit SyncEvent( bool bManualReset );    // NOTE: throw std::system_error if get OS resource failed
+    explicit SyncEvent(bool bManualReset);    // NOTE: throw std::system_error if get OS resource failed
     ~SyncEvent();
 
     // wait event signaled forever
     WaitStatus wait();
 
     // wait event signaled, wait at most milliseconds
-    WaitStatus wait_for( int milliseconds );
+    WaitStatus wait_for(int milliseconds);
 
     // try wait event, doen not block, return true if event has signaled
     bool try_wait();
@@ -179,7 +179,7 @@ public:
 
     // set internal counter(must > 0), can be called many times.
     // NOTE: it is undefined if called when any thread is blocking on this object
-    void reset( int count );
+    void reset(int count);
 
     // decrements the internal counter by 1 and if necessary blocks until the counter reaches zero
     // NOTE: it is undefined if resulting counter is less than zero
@@ -187,7 +187,7 @@ public:
 
     // decrements the internal counter but never block
     // NOTE: it is undefined if resulting counter is less than zero
-    void dec( int val = 1 );
+    void dec(int val = 1);
 
     // blocks until the internal counter reaches zero
     void wait();

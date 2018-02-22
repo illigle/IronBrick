@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -24,7 +24,7 @@ namespace irk {
 class ContractViolation : public std::runtime_error
 {
 public:
-    explicit ContractViolation( const char* msg ) : std::runtime_error( msg ) {}
+    explicit ContractViolation(const char* msg) : std::runtime_error(msg) {}
 };
 
 // contract violation information
@@ -35,16 +35,16 @@ struct CViolationInfo
     unsigned    line;           // the line where contract violated
 };
 
-typedef void (*PFN_CViolationHandler)( const CViolationInfo& );
+typedef void(*PFN_CViolationHandler)(const CViolationInfo&);
 
 // set contract violation handler, return previous contract violation handler
-PFN_CViolationHandler set_violation_handler( PFN_CViolationHandler handler );
+PFN_CViolationHandler set_violation_handler(PFN_CViolationHandler handler);
 
 // get current contract violation handler
 PFN_CViolationHandler get_violation_handler();
 
 // handle contract violation, the default handler will throw "ContractViolation"
-void handle_violation( const char* expression, const char* filename, unsigned lineno );
+void handle_violation(const char* expression, const char* filename, unsigned lineno);
 
 } // namespace irk
 

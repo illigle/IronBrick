@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -20,9 +20,9 @@
 namespace irk {
 
 class BoxBadAccess : public std::logic_error
-{  
+{
 public:
-    BoxBadAccess() : std::logic_error( "Bad Box Access" ) {}
+    BoxBadAccess() : std::logic_error("Bad Box Access") {}
 };
 
 // A box contains value of any type, optimized for scalar value
@@ -33,10 +33,10 @@ class ValBox
     template<typename T>
     static constexpr bool is_nonscalar()    // general compound type
     {
-        return (!std::is_scalar<std::decay_t<T>>::value && 
-                !std::is_same<T,Rational>::value &&
-                !std::is_reference<T>::value &&
-                !std::is_base_of<ValBox,T>::value);
+        return (!std::is_scalar<std::decay_t<T>>::value &&
+            !std::is_same<T, Rational>::value &&
+            !std::is_reference<T>::value &&
+            !std::is_base_of<ValBox, T>::value);
     }
     template<typename T>
     static constexpr uint32_t tidof()
@@ -49,16 +49,16 @@ class ValBox
     struct EmplaceHelper
     {
         template<typename... Args>
-        static void emplace( ValBox& dst, Args&&... args )
+        static void emplace(ValBox& dst, Args&&... args)
         {
             dst = T{std::forward<Args>(args)...};
         }
     };
     template<typename T>
-    struct EmplaceHelper<T,true>
+    struct EmplaceHelper<T, true>
     {
         template<typename... Args>
-        static void emplace( ValBox& dst, Args&&... args )
+        static void emplace(ValBox& dst, Args&&... args)
         {
             dst.m_box.reset();
             dst.m_box.pobj = detail::make_boxed_obj<T>(std::forward<Args>(args)...);
@@ -68,27 +68,27 @@ class ValBox
 public:
     ValBox() = default;
     ~ValBox() = default;
-    ValBox( const ValBox& other )
+    ValBox(const ValBox& other)
     {
-        m_box.copy_from( other.m_box );
+        m_box.copy_from(other.m_box);
     }
-    ValBox& operator=( const ValBox& other )
+    ValBox& operator=(const ValBox& other)
     {
-        if( this != &other )
+        if (this != &other)
         {
             m_box.reset();
-            m_box.copy_from( other.m_box );
+            m_box.copy_from(other.m_box);
         }
         return *this;
     }
-    ValBox( ValBox&& other ) noexcept
+    ValBox(ValBox&& other) noexcept
     {
         m_box = other.m_box;
         other.m_box.tid = detail::TYPEID_INVALID;
     }
-    ValBox& operator=( ValBox&& other ) noexcept
+    ValBox& operator=(ValBox&& other) noexcept
     {
-        if( this != &other )
+        if (this != &other)
         {
             m_box.reset();
             m_box = other.m_box;
@@ -97,69 +97,69 @@ public:
         return *this;
     }
 
-    explicit ValBox( bool val )
+    explicit ValBox(bool val)
     {
         m_box.flag = val;
         m_box.tid = detail::TYPEID_BOOL;
     }
-    explicit ValBox( int32_t val )
+    explicit ValBox(int32_t val)
     {
         m_box.i32 = val;
         m_box.tid = detail::TYPEID_INT32;
     }
-    explicit ValBox( uint32_t val )
+    explicit ValBox(uint32_t val)
     {
         m_box.u32 = val;
         m_box.tid = detail::TYPEID_UINT32;
     }
-    explicit ValBox( int64_t val )
+    explicit ValBox(int64_t val)
     {
         m_box.i64 = val;
         m_box.tid = detail::TYPEID_INT64;
     }
-    explicit ValBox( uint64_t val )
+    explicit ValBox(uint64_t val)
     {
         m_box.u64 = val;
         m_box.tid = detail::TYPEID_UINT64;
     }
-    explicit ValBox( float val )
+    explicit ValBox(float val)
     {
         m_box.f32 = val;
         m_box.tid = detail::TYPEID_FLOAT;
     }
-    explicit ValBox( double val )
+    explicit ValBox(double val)
     {
         m_box.f64 = val;
         m_box.tid = detail::TYPEID_DOUBLE;
     }
-    explicit ValBox( Rational val )
+    explicit ValBox(Rational val)
     {
         m_box.rational = val;
         m_box.tid = detail::TYPEID_RATIONAL;
     }
-    explicit ValBox( decltype(nullptr) )
+    explicit ValBox(decltype(nullptr))
     {
         m_box.ptr = nullptr;
         m_box.tid = detail::TYPEID_PTR;
     }
     template<typename T>
-    explicit ValBox( const T* ptr )
+    explicit ValBox(const T* ptr)
     {
-        static_assert( !std::is_base_of<ValBox,T>::value, "" );
+        static_assert(!std::is_base_of<ValBox, T>::value, "");
         m_box.ptr = (void*)ptr;
         m_box.tid = detail::TYPEID_PTR;
     }
     template<typename T>
-    explicit ValBox( const T& val, std::enable_if_t<is_nonscalar<T>(),int> = 0 )
+    explicit ValBox(const T& val, std::enable_if_t<is_nonscalar<T>(), int> = 0)
     {
-        static_assert( std::is_copy_constructible<T>::value, "require copy constructible" );
+        static_assert(std::is_copy_constructible<T>::value, "require copy constructible");
         m_box.pobj = detail::make_boxed_obj<T>(val);
         m_box.tid = tidof<T>();
     }
     template<typename T>
-    explicit ValBox( T&& val, std::enable_if_t<is_nonscalar<T>(),int> = 0 )
+    explicit ValBox(T&& val, std::enable_if_t<is_nonscalar<T>(), int> = 0)
     {
-        static_assert( std::is_move_constructible<T>::value, "require move constructible" );
+        static_assert(std::is_move_constructible<T>::value, "require move constructible");
         m_box.pobj = detail::make_boxed_obj<T>(std::move(val));
         m_box.tid = tidof<T>();
     }
@@ -171,83 +171,83 @@ public:
         m_box.flag = val;
         m_box.tid = detail::TYPEID_BOOL;
     }
-    void operator=( int32_t val )
+    void operator=(int32_t val)
     {
         m_box.reset();
         m_box.i32 = val;
         m_box.tid = detail::TYPEID_INT32;
     }
-    void operator=( uint32_t val )
+    void operator=(uint32_t val)
     {
         m_box.reset();
         m_box.u32 = val;
         m_box.tid = detail::TYPEID_UINT32;
     }
-    void operator=( int64_t val )
+    void operator=(int64_t val)
     {
         m_box.reset();
         m_box.i64 = val;
         m_box.tid = detail::TYPEID_INT64;
     }
-    void operator=( uint64_t val )
+    void operator=(uint64_t val)
     {
         m_box.reset();
         m_box.u64 = val;
         m_box.tid = detail::TYPEID_UINT64;
     }
-    void operator=( float val )
+    void operator=(float val)
     {
         m_box.reset();
         m_box.f32 = val;
         m_box.tid = detail::TYPEID_FLOAT;
     }
-    void operator=( double val )
+    void operator=(double val)
     {
         m_box.reset();
         m_box.f64 = val;
         m_box.tid = detail::TYPEID_DOUBLE;
     }
-    void operator=( Rational val )
+    void operator=(Rational val)
     {
         m_box.reset();
         m_box.rational = val;
         m_box.tid = detail::TYPEID_RATIONAL;
     }
-    void operator=( decltype(nullptr) )
+    void operator=(decltype(nullptr))
     {
         m_box.reset();
         m_box.ptr = nullptr;
         m_box.tid = detail::TYPEID_PTR;
     }
     template<typename T>
-    void operator=( const T* ptr )
+    void operator=(const T* ptr)
     {
-        static_assert( !std::is_base_of<ValBox,T>::value, "" );
+        static_assert(!std::is_base_of<ValBox, T>::value, "");
         m_box.reset();
         m_box.ptr = (void*)ptr;
         m_box.tid = detail::TYPEID_PTR;
     }
     template<typename T>
-    auto operator=( const T& val ) -> std::enable_if_t<is_nonscalar<T>()>
+    auto operator=(const T& val) -> std::enable_if_t<is_nonscalar<T>()>
     {
-        static_assert( std::is_copy_constructible<T>::value, "require copy constructible" );
+        static_assert(std::is_copy_constructible<T>::value, "require copy constructible");
         m_box.reset();
         m_box.pobj = detail::make_boxed_obj<T>(val);
         m_box.tid = tidof<T>();
     }
     template<typename T>
-    auto operator=( T&& val ) -> std::enable_if_t<is_nonscalar<T>()>
+    auto operator=(T&& val) -> std::enable_if_t<is_nonscalar<T>()>
     {
-        static_assert( std::is_move_constructible<T>::value, "require move constructible" );
+        static_assert(std::is_move_constructible<T>::value, "require move constructible");
         m_box.reset();
         m_box.pobj = detail::make_boxed_obj<T>(std::move(val));
         m_box.tid = tidof<T>();
     }
 
     template<typename T, typename... Args>
-    void emplace( Args&&... args )
+    void emplace(Args&&... args)
     {
-        static_assert( !std::is_reference<T>::value, "" );
+        static_assert(!std::is_reference<T>::value, "");
         EmplaceHelper<T, (tidof<T>() > detail::TYPEID_OBJ)>::emplace(*this, std::forward<Args>(args)...);
     }
 
@@ -260,25 +260,25 @@ public:
 
     // can get value of the specified type
     template<typename T>
-    bool can_get() const    { return detail::BoxUnwrap<T>::matched( m_box ); }
+    bool can_get() const    { return detail::BoxUnwrap<T>::matched(m_box); }
 
     // try to get value of the specified type, return false if failed
     template<typename T>
-    bool try_get( T* pval ) const &
+    bool try_get(T* pval) const &
     {
-        if( detail::BoxUnwrap<T>::matched( m_box ) )
+        if (detail::BoxUnwrap<T>::matched(m_box))
         {
-            *pval = detail::BoxUnwrap<T>::get( m_box );
+            *pval = detail::BoxUnwrap<T>::get(m_box);
             return true;
         }
         return false;
     }
     template<typename T>
-    bool try_get( T* pval ) &&
+    bool try_get(T* pval) &&
     {
-        if( detail::BoxUnwrap<T>::matched( m_box ) )
+        if (detail::BoxUnwrap<T>::matched(m_box))
         {
-            *pval = std::move( detail::BoxUnwrap<T>::get(m_box) );
+            *pval = std::move(detail::BoxUnwrap<T>::get(m_box));
             return true;
         }
         return false;
@@ -288,29 +288,29 @@ public:
     template<typename T>
     T get() const &
     {
-        if( !detail::BoxUnwrap<T>::matched( m_box ) )
+        if (!detail::BoxUnwrap<T>::matched(m_box))
             throw BoxBadAccess{};
-        return detail::BoxUnwrap<T>::get( m_box );
+        return detail::BoxUnwrap<T>::get(m_box);
     }
     template<typename T>
     T get() &&
     {
-        if( !detail::BoxUnwrap<T>::matched( m_box ) )
+        if (!detail::BoxUnwrap<T>::matched(m_box))
             throw BoxBadAccess{};
-        return std::move( detail::BoxUnwrap<T>::get(m_box) );
+        return std::move(detail::BoxUnwrap<T>::get(m_box));
     }
 
     // get pointer for engaged value, for no-scalar type only
     template<typename T>
     const T* getptr() const
     {
-        static_assert( is_nonscalar<T>(), "for scalar type just using copy" );
-        if( !detail::BoxUnwrap<T>::matched( m_box ) )
+        static_assert(is_nonscalar<T>(), "for scalar type just using copy");
+        if (!detail::BoxUnwrap<T>::matched(m_box))
             return nullptr;
         return detail::BoxUnwrap<T>::getptr(m_box);
     }
 
-    void swap( ValBox& other ) noexcept
+    void swap(ValBox& other) noexcept
     {
         auto tmp = this->m_box;
         this->m_box = other.m_box;
@@ -319,10 +319,10 @@ public:
 };
 
 template<typename T, typename... Args>
-inline ValBox make_valuebox( Args&&... args )
+inline ValBox make_valuebox(Args&&... args)
 {
     ValBox box;
-    box.emplace<T>( std::forward<Args>(args)... );
+    box.emplace<T>(std::forward<Args>(args)...);
     return box;
 }
 

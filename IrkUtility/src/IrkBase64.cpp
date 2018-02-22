@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -15,7 +15,7 @@
 #include "IrkContract.h"
 
 // Base64 encoding table
-static const char s_Base64EncTab[64] = 
+static const char s_Base64EncTab[64] =
 {
     0x41,0x42,0x43,0x44,0x45,0x46,0x47,0x48,
     0x49,0x4a,0x4b,0x4c,0x4d,0x4e,0x4f,0x50,
@@ -54,86 +54,86 @@ namespace irk {
 // [srcsize]: input data's bytes count
 // [dstsize]: output buffer's size, should >= (4 * (srcsize/3 + 1))
 // NOTE: output string is NOT null-terminated
-int encode_base64( const uint8_t* src, int srcsize, char* dst, int dstsize )
+int encode_base64(const uint8_t* src, int srcsize, char* dst, int dstsize)
 {
-    irk_expect( srcsize >= 0 );
+    irk_expect(srcsize >= 0);
 
     int i = 0, k = 0;
-    for( ; i <= srcsize - 3; i += 3 )
+    for (; i <= srcsize - 3; i += 3)
     {
-        uint32_t b24 = (src[i] << 16) | (src[i+1] << 8) | src[i+2];
-        dst[k+3] = s_Base64EncTab[b24 & 0x3F];
+        uint32_t b24 = (src[i] << 16) | (src[i + 1] << 8) | src[i + 2];
+        dst[k + 3] = s_Base64EncTab[b24 & 0x3F];
         b24 >>= 6;
-        dst[k+2] = s_Base64EncTab[b24 & 0x3F];
+        dst[k + 2] = s_Base64EncTab[b24 & 0x3F];
         b24 >>= 6;
-        dst[k+1] = s_Base64EncTab[b24 & 0x3F];
+        dst[k + 1] = s_Base64EncTab[b24 & 0x3F];
         b24 >>= 6;
-        dst[k+0] = s_Base64EncTab[b24 & 0x3F];
+        dst[k + 0] = s_Base64EncTab[b24 & 0x3F];
         k += 4;
     }
-    if( i + 1 == srcsize )
+    if (i + 1 == srcsize)
     {
         uint32_t b12 = src[i] << 4;
-        dst[k+3] = dst[k+2] = '=';
-        dst[k+1] = s_Base64EncTab[b12 & 0x3F];
+        dst[k + 3] = dst[k + 2] = '=';
+        dst[k + 1] = s_Base64EncTab[b12 & 0x3F];
         b12 >>= 6;
-        dst[k+0] = s_Base64EncTab[b12 & 0x3F];
+        dst[k + 0] = s_Base64EncTab[b12 & 0x3F];
         k += 4;
     }
-    else if( i + 2 == srcsize )
+    else if (i + 2 == srcsize)
     {
-        uint32_t b18 = (src[i] << 10) | (src[i+1] << 2);
-        dst[k+3] = '=';
-        dst[k+2] = s_Base64EncTab[b18 & 0x3F];
+        uint32_t b18 = (src[i] << 10) | (src[i + 1] << 2);
+        dst[k + 3] = '=';
+        dst[k + 2] = s_Base64EncTab[b18 & 0x3F];
         b18 >>= 6;
-        dst[k+1] = s_Base64EncTab[b18 & 0x3F];
+        dst[k + 1] = s_Base64EncTab[b18 & 0x3F];
         b18 >>= 6;
-        dst[k+0] = s_Base64EncTab[b18 & 0x3F];
+        dst[k + 0] = s_Base64EncTab[b18 & 0x3F];
         k += 4;
     }
 
-    irk_ensure( (k & 3) == 0 && k <= dstsize );
+    irk_ensure((k & 3) == 0 && k <= dstsize);
     return k;
 }
-std::string encode_base64( const uint8_t* src, int srcsize )
+std::string encode_base64(const uint8_t* src, int srcsize)
 {
-    irk_expect( srcsize >= 0 );
+    irk_expect(srcsize >= 0);
     std::string out;
-    out.resize( 4 * (srcsize/3 + 1) );
-    int len = encode_base64( src, srcsize, (char*)out.data(), (int)out.size() );
-    out.resize( len );
+    out.resize(4 * (srcsize / 3 + 1));
+    int len = encode_base64(src, srcsize, (char*)out.data(), (int)out.size());
+    out.resize(len);
     return out;
 }
 
 // Base64 decoding, return decoded bytes count
 // [size]: input base64 string length, must be multiple of 4
 // [dst]: output buffer, buffer size should >= 3 * srcsize / 4
-int decode_base64( const char* src, int srcsize, uint8_t* dst, int dstsize )
+int decode_base64(const char* src, int srcsize, uint8_t* dst, int dstsize)
 {
-    irk_expect( (srcsize & 0x80000003)==0 );    // positive and multiple of 4
+    irk_expect((srcsize & 0x80000003) == 0);    // positive and multiple of 4
 
     const uint8_t* us = (const uint8_t*)src;
     int i = 0, k = 0;
-    for( ; i < srcsize - 4; i += 4 )
+    for (; i < srcsize - 4; i += 4)
     {
         uint32_t b24 = s_Base64DecTab[us[i]];
-        b24 = (b24 << 6) | s_Base64DecTab[us[i+1]];
-        b24 = (b24 << 6) | s_Base64DecTab[us[i+2]];
-        b24 = (b24 << 6) | s_Base64DecTab[us[i+3]];
+        b24 = (b24 << 6) | s_Base64DecTab[us[i + 1]];
+        b24 = (b24 << 6) | s_Base64DecTab[us[i + 2]];
+        b24 = (b24 << 6) | s_Base64DecTab[us[i + 3]];
         dst[k++] = (b24 >> 16) & 0xFF;
         dst[k++] = (b24 >> 8) & 0xFF;
         dst[k++] = (b24 & 0xFF);
     }
 
     uint32_t b24 = s_Base64DecTab[us[i]];
-    b24 = (b24 << 6) | s_Base64DecTab[us[i+1]];
-    b24 = (b24 << 6) | s_Base64DecTab[us[i+2]];
-    b24 = (b24 << 6) | s_Base64DecTab[us[i+3]];
-    if( src[i+2] == '=' )
+    b24 = (b24 << 6) | s_Base64DecTab[us[i + 1]];
+    b24 = (b24 << 6) | s_Base64DecTab[us[i + 2]];
+    b24 = (b24 << 6) | s_Base64DecTab[us[i + 3]];
+    if (src[i + 2] == '=')
     {
         dst[k++] = (b24 >> 16) & 0xFF;
     }
-    else if( src[i+3] == '=' )
+    else if (src[i + 3] == '=')
     {
         dst[k++] = (b24 >> 16) & 0xFF;
         dst[k++] = (b24 >> 8) & 0xFF;
@@ -144,13 +144,13 @@ int decode_base64( const char* src, int srcsize, uint8_t* dst, int dstsize )
         dst[k++] = (b24 >> 8) & 0xFF;
         dst[k++] = (b24 & 0xFF);
     }
-    
-    irk_ensure( k <= dstsize );
+
+    irk_ensure(k <= dstsize);
     return k;
 }
-int decode_base64( const std::string& src, uint8_t* dst, int dstsize )
+int decode_base64(const std::string& src, uint8_t* dst, int dstsize)
 {
-    return decode_base64( src.data(), (int)src.size(), dst, dstsize );
+    return decode_base64(src.data(), (int)src.size(), dst, dstsize);
 }
 
 } // namespace irk

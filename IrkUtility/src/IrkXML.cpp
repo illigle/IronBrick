@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -26,43 +26,43 @@ using detail::XmlStr;
 class XmlAlloc : IrkNocopy
 {
 public:
-    XmlAlloc() : m_memPool(16*1024)
+    XmlAlloc() : m_memPool(16 * 1024)
     {
-        m_tempStr.reserve( 128 );
+        m_tempStr.reserve(128);
     }
 
     // create new object
     template<class Ty, class... Args>
-    Ty* create( Args&&... args )
+    Ty* create(Args&&... args)
     {
-        void* ptr = m_memPool.alloc( sizeof(Ty), alignof(Ty) );
-        return ::new(ptr) Ty( std::forward<Args>(args)... );    // inplace new
+        void* ptr = m_memPool.alloc(sizeof(Ty), alignof(Ty));
+        return ::new(ptr) Ty(std::forward<Args>(args)...);    // inplace new
     }
     // delete object
     template<class Ty>
-    void trash( Ty* ptr )
+    void trash(Ty* ptr)
     {
-        if( ptr )
+        if (ptr)
         {
             ptr->~Ty();
-            m_memPool.dealloc( ptr, sizeof(Ty) );
+            m_memPool.dealloc(ptr, sizeof(Ty));
         }
     }
 
     // allocate memory block
-    void* alloc( size_t size, size_t alignment = sizeof(void*) )
+    void* alloc(size_t size, size_t alignment = sizeof(void*))
     {
-        return m_memPool.alloc( size, alignment );
+        return m_memPool.alloc(size, alignment);
     }
     // deallocate memory block returned from alloc()
-    void dealloc( void* ptr, size_t size )
+    void dealloc(void* ptr, size_t size)
     {
-        m_memPool.dealloc( ptr, size );
+        m_memPool.dealloc(ptr, size);
     }
     // real buffer capacity for the requested size
-    size_t bucket_size( size_t size ) const
+    size_t bucket_size(size_t size) const
     {
-        return m_memPool.bucket_size( size );
+        return m_memPool.bucket_size(size);
     }
 
     // temp string used to parse xml text
@@ -78,16 +78,16 @@ private:
 };
 
 // alloc an empty string, assure capacity, discard existing data
-inline void detail::XmlStr::alloc( XmlAlloc* allocator, int capacity )
+inline void detail::XmlStr::alloc(XmlAlloc* allocator, int capacity)
 {
-    if( this->cap < capacity )
+    if (this->cap < capacity)
     {
-        size_t buksize = allocator->bucket_size( capacity );
-        void* newbuf = allocator->alloc( buksize );
-        assert( (int)buksize >= capacity );
+        size_t buksize = allocator->bucket_size(capacity);
+        void* newbuf = allocator->alloc(buksize);
+        assert((int)buksize >= capacity);
 
-        if( this->cap > 0 )
-            allocator->dealloc( this->buf, (size_t)this->cap );
+        if (this->cap > 0)
+            allocator->dealloc(this->buf, (size_t)this->cap);
         this->buf = (char*)newbuf;
         this->cap = (int)buksize;
     }
@@ -95,11 +95,11 @@ inline void detail::XmlStr::alloc( XmlAlloc* allocator, int capacity )
 }
 
 // deallocate string buffer
-inline void detail::XmlStr::clear( XmlAlloc* allocator )
+inline void detail::XmlStr::clear(XmlAlloc* allocator)
 {
-    if( this->cap > 0 )
+    if (this->cap > 0)
     {
-        allocator->dealloc( this->buf, (size_t)this->cap );
+        allocator->dealloc(this->buf, (size_t)this->cap);
         this->buf = (char*)"";
         this->cap = 0;
         this->len = 0;
@@ -107,70 +107,70 @@ inline void detail::XmlStr::clear( XmlAlloc* allocator )
 }
 
 // reserve string capacity, copy existing data
-void detail::XmlStr::reserve( XmlAlloc* allocator, int capacity )
+void detail::XmlStr::reserve(XmlAlloc* allocator, int capacity)
 {
-    if( this->cap < capacity )
+    if (this->cap < capacity)
     {
         // alloc new buffer, copy existing data
-        size_t buksize = allocator->bucket_size( capacity );
-        void* newbuf = allocator->alloc( buksize );
-        assert( (int)buksize >= capacity );
+        size_t buksize = allocator->bucket_size(capacity);
+        void* newbuf = allocator->alloc(buksize);
+        assert((int)buksize >= capacity);
 
-        if( this->len > 0 )
-            memcpy( newbuf, this->buf, this->len );
-        
-        if( this->cap > 0 )
-            allocator->dealloc( this->buf, (size_t)this->cap );
+        if (this->len > 0)
+            memcpy(newbuf, this->buf, this->len);
+
+        if (this->cap > 0)
+            allocator->dealloc(this->buf, (size_t)this->cap);
         this->buf = (char*)newbuf;
         this->cap = (int)buksize;
     }
 }
 
 // set new string
-inline void detail::XmlStr::assign( XmlAlloc* allocator, const char* src, int length )
+inline void detail::XmlStr::assign(XmlAlloc* allocator, const char* src, int length)
 {
     // assure buffer is big enough
-    if( length < 0 )
-        length = (int)strlen( src );
-    this->alloc( allocator, length + 1 );
+    if (length < 0)
+        length = (int)strlen(src);
+    this->alloc(allocator, length + 1);
 
-    assert( this->cap > length );
-    memcpy( this->buf, src, length );
+    assert(this->cap > length);
+    memcpy(this->buf, src, length);
     this->buf[length] = '\0';
     this->len = length;
 }
-inline void detail::XmlStr::assign( XmlAlloc* allocator, const string& src )
+inline void detail::XmlStr::assign(XmlAlloc* allocator, const string& src)
 {
     // assure buffer is big enough
     int length = (int)src.length();
-    this->alloc( allocator, length + 1 );
+    this->alloc(allocator, length + 1);
 
-    assert( this->cap > length );
-    memcpy( this->buf, src.data(), length );
+    assert(this->cap > length);
+    memcpy(this->buf, src.data(), length);
     this->buf[length] = '\0';
     this->len = length;
 }
 
 // append string
-inline void detail::XmlStr::append( XmlAlloc* allocator, const char* src, int length )
+inline void detail::XmlStr::append(XmlAlloc* allocator, const char* src, int length)
 {
-    if( length < 0 )
-        length = (int)strlen( src );
+    if (length < 0)
+        length = (int)strlen(src);
     const int newlen = this->len + length;
-    this->reserve( allocator, newlen + 1 );
+    this->reserve(allocator, newlen + 1);
 
-    assert( this->cap > newlen );
-    memcpy( this->buf + this->len, src, length );
+    assert(this->cap > newlen);
+    memcpy(this->buf + this->len, src, length);
     this->len = newlen;
     this->buf[newlen] = '\0';
 }
-inline void detail::XmlStr::append( XmlAlloc* allocator, const string& src )
+inline void detail::XmlStr::append(XmlAlloc* allocator, const string& src)
 {
     const int newlen = this->len + (int)src.length();
-    this->reserve( allocator, newlen + 1 );
+    this->reserve(allocator, newlen + 1);
 
-    assert( this->cap > newlen );
-    memcpy( this->buf + this->len, src.data(), (int)src.length() );
+    assert(this->cap > newlen);
+    memcpy(this->buf + this->len, src.data(), (int)src.length());
     this->len = newlen;
     this->buf[newlen] = '\0';
 }
@@ -215,18 +215,18 @@ static const uint8_t s_NameChar[256] =
 
 // get the length of string literal
 template<size_t N>
-static constexpr int lengthof( const char (&str)[N] )
+static constexpr int lengthof(const char(&str)[N])
 {
-    static_assert( N > 0, "" );
-    return static_cast<int>( N - 1 );
+    static_assert(N > 0, "");
+    return static_cast<int>(N - 1);
 }
 
 // whether s1 is begin with s2
-static bool str_begwith( const char* s1, const char* s2 )
+static bool str_begwith(const char* s1, const char* s2)
 {
-    while( *s2 )
+    while (*s2)
     {
-        if( *s1 != *s2 )
+        if (*s1 != *s2)
             return false;
         s1++;
         s2++;
@@ -235,32 +235,33 @@ static bool str_begwith( const char* s1, const char* s2 )
 }
 
 // convert string to XML text, add to the back of the dst string
-static void escape_xml_string( const char* src, string& dst )
+static void escape_xml_string(const char* src, string& dst)
 {
-    while( 1 )
+    while (1)
     {
-        if( IS_CTRLMARK( *src  ) )  // character need to be escaped
+        if (IS_CTRLMARK(*src))  // character need to be escaped
         {
-            if( *src == 0 )
+            if (*src == 0)
                 break;
-            else if( *src == '&' )
+            else if (*src == '&')
                 dst += "&amp;";
-            else if( *src == '\'' )
+            else if (*src == '\'')
                 dst += "&apos;";
-            else if( *src == '\"' )
-                dst += "&quot;";       
-            else if( *src == '<' )
+            else if (*src == '\"')
+                dst += "&quot;";
+            else if (*src == '<')
                 dst += "&lt;";
-            else if( *src == '>' )
+            else if (*src == '>')
                 dst += "&gt;";
-            else if( *src == '\t' )
+            else if (*src == '\t')
                 dst += "&#9;";
-            else if( *src == '\n' )
+            else if (*src == '\n')
                 dst += "&#10;";
-            else if( *src == '\r' )
-                dst += "&#13;";        
+            else if (*src == '\r')
+                dst += "&#13;";
             else
-            {}  // discard other control characters
+            {
+            }  // discard other control characters
         }
         else    // plain text
         {
@@ -271,22 +272,22 @@ static void escape_xml_string( const char* src, string& dst )
 }
 
 // convert XML text to normal string, return character count comsumed, return -1 if failed
-static int unescape_xml_text( const char* text, std::string& dst )
+static int unescape_xml_text(const char* text, std::string& dst)
 {
-    assert( text[0] == '&' );
+    assert(text[0] == '&');
 
-    if( text[1] == '#' )        // number
+    if (text[1] == '#')         // number
     {
         uint32_t chNum = 0;
         int k = 2;
-        if( text[2] == 'x' )    // hex-decimal
+        if (text[2] == 'x')     // hex-decimal
         {
-            for( k = 3; true; k++ )
+            for (k = 3; true; k++)
             {
-                int ch = text[k] | 0x20;         // convert to lower
-                if( ch >= '0' && ch <= '9' )
+                int ch = text[k] | 0x20;        // convert to lower
+                if (ch >= '0' && ch <= '9')
                     chNum = (chNum << 4) + (ch - '0');
-                else if( ch >= 'a' && ch <= 'f' )
+                else if (ch >= 'a' && ch <= 'f')
                     chNum = (chNum << 4) + (ch - 'a' + 10);
                 else
                     break;
@@ -294,7 +295,7 @@ static int unescape_xml_text( const char* text, std::string& dst )
         }
         else    // decimal
         {
-            while( text[k] >= '0' && text[k] <= '9' )
+            while (text[k] >= '0' && text[k] <= '9')
             {
                 chNum = (chNum * 10) + (text[k] - '0');
                 k++;
@@ -302,22 +303,22 @@ static int unescape_xml_text( const char* text, std::string& dst )
         }
 
         // is valid character number
-        if( text[k] != ';' || chNum == 0 || chNum > 0x10FFFF )
+        if (text[k] != ';' || chNum == 0 || chNum > 0x10FFFF)
         {
             return -1;
         }
 
         // convert to UTF-8 character
-        if( chNum < 0x80 )
+        if (chNum < 0x80)
         {
             dst += (char)chNum;
         }
-        else if( chNum < 0x800 )
+        else if (chNum < 0x800)
         {
             dst += (char)(0xC0 | (chNum >> 6));
             dst += (char)(0x80 | (chNum & 0x3F));
         }
-        else if( chNum < 0x10000 )
+        else if (chNum < 0x10000)
         {
             dst += (char)(0xE0 | (chNum >> 12));
             dst += (char)(0x80 | ((chNum >> 6) & 0x3F));
@@ -333,40 +334,40 @@ static int unescape_xml_text( const char* text, std::string& dst )
 
         return k + 1;
     }
-    else if( str_begwith( text, "&lt;" ) )
+    else if (str_begwith(text, "&lt;"))
     {
         dst += '<';
         return 4;
     }
-    else if( str_begwith( text, "&gt;" ) )
+    else if (str_begwith(text, "&gt;"))
     {
         dst += '>';
         return 4;
     }
-    else if( str_begwith( text, "&amp;" ) )
+    else if (str_begwith(text, "&amp;"))
     {
         dst += '&';
         return 5;
     }
-    else if( str_begwith( text, "&apos;" ) )
+    else if (str_begwith(text, "&apos;"))
     {
         dst += '\'';
         return 6;
     }
-    else if( str_begwith( text, "&quos;" ) )
+    else if (str_begwith(text, "&quos;"))
     {
         dst += '\"';
         return 6;
     }
     else    // unknow XML Entity, doen NOT support yet
-    {   
+    {
         int k = 1;
-        while( IS_NAMECHAR(text[k]) )
+        while (IS_NAMECHAR(text[k]))
             k++;
-        if( text[k] != ';' || k == 1 )  // invalid grammer
+        if (text[k] != ';' || k == 1)  // invalid grammer
             return -1;
 
-        dst.append( text, k + 1 );
+        dst.append(text, k + 1);
         return k + 1;
     }
 
@@ -374,54 +375,54 @@ static int unescape_xml_text( const char* text, std::string& dst )
 }
 
 // parse text content of element, return character count comsumed, return -1 if failed
-static int parse_xml_content( const char* text, std::string& dst )
+static int parse_xml_content(const char* text, std::string& dst)
 {
     int k = 0;
-    while( 1 )
+    while (1)
     {
-        if( !IS_CTRLMARK( text[k] ) )   // plain character
+        if (!IS_CTRLMARK(text[k]))   // plain character
         {
-            dst.push_back( text[k] );
+            dst.push_back(text[k]);
             k++;
         }
         else    // control or markup character
         {
-            if( text[k] == '<' )
+            if (text[k] == '<')
             {
                 // find end-tag, child element, comment, etc
                 break;
             }
-            else if( text[k] == '&' )   // escape character
+            else if (text[k] == '&')   // escape character
             {
-                int used = unescape_xml_text( text + k, dst );
-                if( used <= 0 )
+                int used = unescape_xml_text(text + k, dst);
+                if (used <= 0)
                     return -1;
                 k += used;
             }
             else
             {
-                if( text[k] < 32 && !IS_SPACE( text[k] ) )  // control char except whitespace is NOT allowed
+                if (text[k] < 32 && !IS_SPACE(text[k]))  // control char except whitespace is NOT allowed
                     return -1;
-                dst.push_back( text[k] );
+                dst.push_back(text[k]);
                 k++;
             }
         }
     }
 
     // remove trailing whitespace
-    while( !dst.empty() && IS_SPACE(dst.back()) )
+    while (!dst.empty() && IS_SPACE(dst.back()))
     {
         dst.pop_back();
     }
 
-    assert( text[k] == '<' );
+    assert(text[k] == '<');
     return k;
 }
 
 //======================================================================================================================
-XmlAttr::XmlAttr( XmlAlloc* allocator )
+XmlAttr::XmlAttr(XmlAlloc* allocator)
 {
-    assert( allocator != nullptr );
+    assert(allocator != nullptr);
     m_alloc = allocator;
     m_pNext = nullptr;
     m_cvtflag = CVT_FLAG_DEFAULT;
@@ -429,27 +430,27 @@ XmlAttr::XmlAttr( XmlAlloc* allocator )
 
 XmlAttr::~XmlAttr()
 {
-    m_name.clear( m_alloc );
-    m_value.clear( m_alloc );
+    m_name.clear(m_alloc);
+    m_value.clear(m_alloc);
 }
 
 // set attribute name, must be valid XML Name(this method will NOT check)
-void XmlAttr::set_name( const char* text, int len )
+void XmlAttr::set_name(const char* text, int len)
 {
-    m_name.assign( m_alloc, text, len );
+    m_name.assign(m_alloc, text, len);
 }
-void XmlAttr::set_name( const string& text )
+void XmlAttr::set_name(const string& text)
 {
-    m_name.assign( m_alloc, text );
+    m_name.assign(m_alloc, text);
 }
 
 bool XmlAttr::as_bool() const
 {
-    if( stricmp(m_value.buf, "true") == 0 )
+    if (stricmp(m_value.buf, "true") == 0)
     {
         return true;
     }
-    else if( stricmp(m_value.buf, "false") == 0 )
+    else if (stricmp(m_value.buf, "false") == 0)
     {
         return false;
     }
@@ -458,144 +459,144 @@ bool XmlAttr::as_bool() const
 
 int32_t XmlAttr::as_int() const
 {
-    return str_to_int( m_value.buf );
+    return str_to_int(m_value.buf);
 }
 
 uint32_t XmlAttr::as_uint() const
 {
-    return str_to_uint( m_value.buf );
+    return str_to_uint(m_value.buf);
 }
 
 int64_t XmlAttr::as_int64() const
 {
-    return str_to_int64( m_value.buf );
+    return str_to_int64(m_value.buf);
 }
 
 uint64_t XmlAttr::as_uint64() const
 {
-    return str_to_uint64( m_value.buf );
+    return str_to_uint64(m_value.buf);
 }
 
 float XmlAttr::as_float() const
 {
-    return (float)strtod( m_value.buf, nullptr );
+    return (float)strtod(m_value.buf, nullptr);
 }
 
 double XmlAttr::as_double() const
 {
-    return strtod( m_value.buf, nullptr );
+    return strtod(m_value.buf, nullptr);
 }
 
-void XmlAttr::set_value( const char* text, int len )
+void XmlAttr::set_value(const char* text, int len)
 {
-    m_value.assign( m_alloc, text, len );
+    m_value.assign(m_alloc, text, len);
     m_cvtflag = CVT_FLAG_DEFAULT;
 }
 
-void XmlAttr::set_value( const string& text )
+void XmlAttr::set_value(const string& text)
 {
-    m_value.assign( m_alloc, text );
+    m_value.assign(m_alloc, text);
     m_cvtflag = CVT_FLAG_DEFAULT;
 }
 
-void XmlAttr::set_value( bool val )
+void XmlAttr::set_value(bool val)
 {
-    if( val )
-        m_value.assign( m_alloc, "true", 4 );
+    if (val)
+        m_value.assign(m_alloc, "true", 4);
     else
-        m_value.assign( m_alloc, "false", 5 );
+        m_value.assign(m_alloc, "false", 5);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
-void XmlAttr::set_value( int32_t val )
+void XmlAttr::set_value(int32_t val)
 {
-    m_value.alloc( m_alloc, 16 );
-    m_value.len = int_to_str( val, m_value.buf, m_value.cap );
+    m_value.alloc(m_alloc, 16);
+    m_value.len = int_to_str(val, m_value.buf, m_value.cap);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
-void XmlAttr::set_value( uint32_t val )
+void XmlAttr::set_value(uint32_t val)
 {
-    m_value.alloc( m_alloc, 16 );
-    m_value.len = int_to_str( val, m_value.buf, m_value.cap );
+    m_value.alloc(m_alloc, 16);
+    m_value.len = int_to_str(val, m_value.buf, m_value.cap);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
-void XmlAttr::set_value( int64_t val )
+void XmlAttr::set_value(int64_t val)
 {
-    m_value.alloc( m_alloc, 32 );
-    m_value.len = int_to_str( val, m_value.buf, m_value.cap );
+    m_value.alloc(m_alloc, 32);
+    m_value.len = int_to_str(val, m_value.buf, m_value.cap);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
-void XmlAttr::set_value( uint64_t val )
+void XmlAttr::set_value(uint64_t val)
 {
-    m_value.alloc( m_alloc, 32 );
-    m_value.len = int_to_str( val, m_value.buf, m_value.cap );
+    m_value.alloc(m_alloc, 32);
+    m_value.len = int_to_str(val, m_value.buf, m_value.cap);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
-void XmlAttr::set_value( double val )
+void XmlAttr::set_value(double val)
 {
     char buf[128] = {0};
-    int cnt = str_format( buf, 128, "%0.9g", val );
-    m_value.assign( m_alloc, buf, cnt );
+    int cnt = str_format(buf, 128, "%0.9g", val);
+    m_value.assign(m_alloc, buf, cnt);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
 // format attribute, add to the tail of the output string
-void XmlAttr::format( std::string& dst ) const
+void XmlAttr::format(std::string& dst) const
 {
-    if( m_name.len > 0 )
+    if (m_name.len > 0)
     {
-        dst.append( m_name.buf, m_name.len );
-        dst.append( "=\"", 2 );
-        if( m_cvtflag == CVT_FLAG_NOCVT )
-            dst.append( m_value.buf, m_value.len );
+        dst.append(m_name.buf, m_name.len);
+        dst.append("=\"", 2);
+        if (m_cvtflag == CVT_FLAG_NOCVT)
+            dst.append(m_value.buf, m_value.len);
         else
-            escape_xml_string( m_value.buf, dst );
-        dst.push_back( '\"' );
+            escape_xml_string(m_value.buf, dst);
+        dst.push_back('\"');
     }
 }
 
 // parse and fill, return chars consumed, return -1 if failed
-int XmlAttr::parse( const char* text )
+int XmlAttr::parse(const char* text)
 {
     // parse attribute name
     int k = 0;
-    while( IS_NAMECHAR( text[k] ) )
+    while (IS_NAMECHAR(text[k]))
         k++;
-    m_name.assign( m_alloc, text, k );
+    m_name.assign(m_alloc, text, k);
 
     // skip EQ and space
-    while( IS_SPACE( text[k] ) )
+    while (IS_SPACE(text[k]))
         k++;
-    if( text[k] != '=' )
+    if (text[k] != '=')
         return -1;
     k++;
-    while( IS_SPACE( text[k] ) )
+    while (IS_SPACE(text[k]))
         k++;
 
     // check value delimit, " or '
     const char delimit = text[k];
-    if( delimit != '\"' && delimit != '\'' )
+    if (delimit != '\"' && delimit != '\'')
         return -1;
     k++;
 
     // parse attribute value
     std::string& value = m_alloc->temp_string();
-    while( text[k] != delimit )
+    while (text[k] != delimit)
     {
-        if( !IS_CTRLMARK( text[k] ) )   // plain character
+        if (!IS_CTRLMARK(text[k]))   // plain character
         {
-            value.push_back( text[k] );
+            value.push_back(text[k]);
             k++;
         }
         else    // control or markup character   
         {
-            if( text[k] < 32 )  // control character
+            if (text[k] < 32)  // control character
             {
-                if( IS_SPACE( text[k] ) )   // normalize space
+                if (IS_SPACE(text[k]))   // normalize space
                 {
                     value.push_back(' ');
                     k++;
@@ -608,35 +609,35 @@ int XmlAttr::parse( const char* text )
             }
             else
             {
-                if( text[k] == '&' )    // escape or reference
+                if (text[k] == '&')    // escape or reference
                 {
-                    int used = unescape_xml_text( text + k, value );
-                    if( used <= 0 )
+                    int used = unescape_xml_text(text + k, value);
+                    if (used <= 0)
                         return -1;
                     k += used;
                 }
-                else if( text[k] == '<' )   // invalid
+                else if (text[k] == '<')   // invalid
                 {
                     return -1;
                 }
                 else
                 {
-                    value.push_back( text[k] );
+                    value.push_back(text[k]);
                     k++;
                 }
             }
         }
     }
-    m_value.assign( m_alloc, value );
+    m_value.assign(m_alloc, value);
 
-    assert( text[k] == delimit );
+    assert(text[k] == delimit);
     return k + 1;
 }
 
 //======================================================================================================================
-XmlElem::XmlElem( XmlAlloc* allocator )
+XmlElem::XmlElem(XmlAlloc* allocator)
 {
-    assert( allocator != nullptr );
+    assert(allocator != nullptr);
     m_alloc = allocator;
     m_parent = nullptr;
     m_pNext = nullptr;
@@ -645,7 +646,7 @@ XmlElem::XmlElem( XmlAlloc* allocator )
     m_cvtflag = CVT_FLAG_DEFAULT;
 }
 
-XmlElem::XmlElem( XmlElem* parent ) : XmlElem( parent->allocator() )
+XmlElem::XmlElem(XmlElem* parent) : XmlElem(parent->allocator())
 {
     m_parent = parent;
 }
@@ -654,28 +655,28 @@ XmlElem::~XmlElem()
 {
     this->clear_attrs();
     this->clear_children();
-    m_tag.clear( m_alloc );
-    m_content.clear( m_alloc );
-    m_comment.clear( m_alloc );
+    m_tag.clear(m_alloc);
+    m_content.clear(m_alloc);
+    m_comment.clear(m_alloc);
 }
 
 // set element tag, must be valid XML Name(this method will NOT check)
-void XmlElem::set_tag( const char* tag, int len )
+void XmlElem::set_tag(const char* tag, int len)
 {
-    m_tag.assign( m_alloc, tag, len );
+    m_tag.assign(m_alloc, tag, len);
 }
-void XmlElem::set_tag( const string& tag )
+void XmlElem::set_tag(const string& tag)
 {
-    m_tag.assign( m_alloc, tag );
+    m_tag.assign(m_alloc, tag);
 }
 
 bool XmlElem::as_bool() const
 {
-    if( stricmp(m_content.buf, "true") == 0 )
+    if (stricmp(m_content.buf, "true") == 0)
     {
         return true;
     }
-    else if( stricmp(m_content.buf, "false") == 0 )
+    else if (stricmp(m_content.buf, "false") == 0)
     {
         return false;
     }
@@ -684,140 +685,140 @@ bool XmlElem::as_bool() const
 
 int32_t XmlElem::as_int() const
 {
-    return str_to_int( m_content.buf );
+    return str_to_int(m_content.buf);
 }
 
 uint32_t XmlElem::as_uint() const
 {
-    return str_to_uint( m_content.buf );
+    return str_to_uint(m_content.buf);
 }
 
 int64_t XmlElem::as_int64() const
 {
-    return str_to_int64( m_content.buf );
+    return str_to_int64(m_content.buf);
 }
 
 uint64_t XmlElem::as_uint64() const
 {
-    return str_to_uint64( m_content.buf );
+    return str_to_uint64(m_content.buf);
 }
 
 float XmlElem::as_float() const
 {
-    return (float)::strtod( m_content.buf, nullptr );
+    return (float)::strtod(m_content.buf, nullptr);
 }
 
 double XmlElem::as_double() const
 {
-    return ::strtod( m_content.buf, nullptr );
+    return ::strtod(m_content.buf, nullptr);
 }
 
-void XmlElem::set_content( const char* text, int len )
+void XmlElem::set_content(const char* text, int len)
 {
-    m_content.assign( m_alloc, text, len );
+    m_content.assign(m_alloc, text, len);
     m_cvtflag = CVT_FLAG_DEFAULT;
 }
 
-void XmlElem::set_content( const string& text )
+void XmlElem::set_content(const string& text)
 {
-    m_content.assign( m_alloc, text );
+    m_content.assign(m_alloc, text);
     m_cvtflag = CVT_FLAG_DEFAULT;
 }
 
-void XmlElem::set_content( bool val )
+void XmlElem::set_content(bool val)
 {
-    if( val )
-        m_content.assign( m_alloc, "true", 4 );
+    if (val)
+        m_content.assign(m_alloc, "true", 4);
     else
-        m_content.assign( m_alloc, "false", 5 );
+        m_content.assign(m_alloc, "false", 5);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
-void XmlElem::set_content( int32_t val )
+void XmlElem::set_content(int32_t val)
 {
-    m_content.alloc( m_alloc, 16 );
-    m_content.len = int_to_str( val, m_content.buf, m_content.cap );
+    m_content.alloc(m_alloc, 16);
+    m_content.len = int_to_str(val, m_content.buf, m_content.cap);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
-void XmlElem::set_content( uint32_t val )
+void XmlElem::set_content(uint32_t val)
 {
-    m_content.alloc( m_alloc, 16 );
-    m_content.len = int_to_str( val, m_content.buf, m_content.cap );
+    m_content.alloc(m_alloc, 16);
+    m_content.len = int_to_str(val, m_content.buf, m_content.cap);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
-void XmlElem::set_content( int64_t val )
+void XmlElem::set_content(int64_t val)
 {
-    m_content.alloc( m_alloc, 32 );
-    m_content.len = int_to_str( val, m_content.buf, m_content.cap );
+    m_content.alloc(m_alloc, 32);
+    m_content.len = int_to_str(val, m_content.buf, m_content.cap);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
-void XmlElem::set_content( uint64_t val )
+void XmlElem::set_content(uint64_t val)
 {
-    m_content.alloc( m_alloc, 32 );
-    m_content.len = int_to_str( val, m_content.buf, m_content.cap );
+    m_content.alloc(m_alloc, 32);
+    m_content.len = int_to_str(val, m_content.buf, m_content.cap);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
-void XmlElem::set_content( double val )
+void XmlElem::set_content(double val)
 {
     char buf[128] = {0};
-    int cnt = str_format( buf, 128, "%0.9g", val );
-    m_content.assign( m_alloc, buf, cnt );
+    int cnt = str_format(buf, 128, "%0.9g", val);
+    m_content.assign(m_alloc, buf, cnt);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
-void XmlElem::set_content_base64( const void* data, int bytes )
+void XmlElem::set_content_base64(const void* data, int bytes)
 {
-    const int charCnt = 4 * (bytes/3 + 1);
-    m_content.alloc( m_alloc, charCnt );
-    m_content.len = encode_base64( (const uint8_t*)data, bytes, m_content.buf, m_content.cap );
+    const int charCnt = 4 * (bytes / 3 + 1);
+    m_content.alloc(m_alloc, charCnt);
+    m_content.len = encode_base64((const uint8_t*)data, bytes, m_content.buf, m_content.cap);
     m_cvtflag = CVT_FLAG_NOCVT;
 }
 
-void XmlElem::set_content_cdata( const char* text, int len )
+void XmlElem::set_content_cdata(const char* text, int len)
 {
-    m_content.assign( m_alloc, text, len );
+    m_content.assign(m_alloc, text, len);
     m_cvtflag = CVT_FLAG_CDATA;
 }
 
-void XmlElem::set_comment( const char* comm, int len )
+void XmlElem::set_comment(const char* comm, int len)
 {
-    m_comment.assign( m_alloc, comm, len );
+    m_comment.assign(m_alloc, comm, len);
 }
-void XmlElem::set_comment( const std::string& comm )
+void XmlElem::set_comment(const std::string& comm)
 {
-    m_comment.assign( m_alloc, comm );
+    m_comment.assign(m_alloc, comm);
 }
 
 // find attribute, use sequencial search
-const XmlAttr* XmlElem::find_attr( const char* name ) const
+const XmlAttr* XmlElem::find_attr(const char* name) const
 {
-    return m_attrList.find( [name](XmlAttr* attr){ return strcmp(attr->name(), name)==0; } );
+    return m_attrList.find([name](XmlAttr* attr) { return strcmp(attr->name(), name) == 0; });
 }
-XmlAttr* XmlElem::find_attr( const char* name )
+XmlAttr* XmlElem::find_attr(const char* name)
 {
-    return m_attrList.find( [name](XmlAttr* attr){ return strcmp(attr->name(), name)==0; } );
+    return m_attrList.find([name](XmlAttr* attr) { return strcmp(attr->name(), name) == 0; });
 }
 
 // add dummy attribute, for internal usage
 XmlAttr* XmlElem::add_null_attr()
 {
-    XmlAttr* attr = m_alloc->create<XmlAttr>( m_alloc );
-    m_attrList.push_back( attr );
+    XmlAttr* attr = m_alloc->create<XmlAttr>(m_alloc);
+    m_attrList.push_back(attr);
     m_attrCnt++;
     return attr;
 }
 
 // remove and destroy attribute
-bool XmlElem::erase_attr( const char* name )
+bool XmlElem::erase_attr(const char* name)
 {
-    XmlAttr* victim = m_attrList.remove( [name](XmlAttr* attr){ return strcmp(attr->name(), name)==0; } );
-    if( victim )
+    XmlAttr* victim = m_attrList.remove([name](XmlAttr* attr) { return strcmp(attr->name(), name) == 0; });
+    if (victim)
     {
-        m_alloc->trash( victim );
+        m_alloc->trash(victim);
         m_attrCnt--;
         return true;
     }
@@ -828,10 +829,10 @@ bool XmlElem::erase_attr( const char* name )
 void XmlElem::clear_attrs()
 {
     XmlAttr* attr = m_attrList.m_firstNode;
-    while( attr )
+    while (attr)
     {
         XmlAttr* next = attr->next_sibling();
-        m_alloc->trash( attr );
+        m_alloc->trash(attr);
         attr = next;
     }
     m_attrList.clear();
@@ -840,32 +841,32 @@ void XmlElem::clear_attrs()
 
 // find child element, return nullptr if failed, use sequencial search
 // if mulitple elements with the same tag exist, return the first one
-const XmlElem* XmlElem::find_child( const char* tag ) const
+const XmlElem* XmlElem::find_child(const char* tag) const
 {
-    return m_children.find( [tag](XmlElem* e){ return strcmp(e->tag(), tag)==0; } );
+    return m_children.find([tag](XmlElem* e) { return strcmp(e->tag(), tag) == 0; });
 }
-XmlElem* XmlElem::find_child( const char* tag )
+XmlElem* XmlElem::find_child(const char* tag)
 {
-    return m_children.find( [tag](XmlElem* e){ return strcmp(e->tag(), tag)==0; } );
+    return m_children.find([tag](XmlElem* e) { return strcmp(e->tag(), tag) == 0; });
 }
 
 // add dummy child, for internal usage
 XmlElem* XmlElem::add_null_child()
 {
-    XmlElem* elem = m_alloc->create<XmlElem>( this );
-    m_children.push_back( elem );
+    XmlElem* elem = m_alloc->create<XmlElem>(this);
+    m_children.push_back(elem);
     m_childCnt++;
     return elem;
 }
 
 // remove and destroy child
 // if mulitple children with the same tag exist, remove the first one
-bool XmlElem::erase_child( const char* tag )
+bool XmlElem::erase_child(const char* tag)
 {
-    XmlElem* victim = m_children.remove( [tag](XmlElem* e){ return strcmp(e->tag(), tag)==0; } );
-    if( victim )
+    XmlElem* victim = m_children.remove([tag](XmlElem* e) { return strcmp(e->tag(), tag) == 0; });
+    if (victim)
     {
-        m_alloc->trash( victim );
+        m_alloc->trash(victim);
         m_childCnt--;
         return true;
     }
@@ -876,10 +877,10 @@ bool XmlElem::erase_child( const char* tag )
 void XmlElem::clear_children()
 {
     XmlElem* elem = m_children.m_firstNode;
-    while( elem )
+    while (elem)
     {
         XmlElem* next = elem->next_sibling();
-        m_alloc->trash( elem );
+        m_alloc->trash(elem);
         elem = next;
     }
     m_children.clear();
@@ -887,252 +888,252 @@ void XmlElem::clear_children()
 }
 
 // format element, add to the tail of the output string
-void XmlElem::format( string& dst ) const
+void XmlElem::format(string& dst) const
 {
-    if( m_tag.len <= 0 )
+    if (m_tag.len <= 0)
         return;
 
     // comment
-    if( m_comment.len > 0 )
+    if (m_comment.len > 0)
     {
         dst += "<!-- ";
-        dst.append( m_comment.buf, m_comment.len );
+        dst.append(m_comment.buf, m_comment.len);
         dst += " -->\n";
     }
 
     // start-tag
     dst += '<';
-    dst.append( m_tag.buf, m_tag.len );
+    dst.append(m_tag.buf, m_tag.len);
 
     // attributes
     const XmlAttr* attr = m_attrList.m_firstNode;
-    while( attr )
+    while (attr)
     {
         dst += ' ';
-        attr->format( dst );
+        attr->format(dst);
         attr = attr->next_sibling();
     }
 
     // check empty element
-    if( m_content.len == 0 && m_childCnt == 0 )
+    if (m_content.len == 0 && m_childCnt == 0)
     {
-        dst.append( "/>\n", 3 );     // end tag
+        dst.append("/>\n", 3);     // end tag
         return;
     }
     dst += '>';
 
     // element content
-    if( m_content.len > 0 )
+    if (m_content.len > 0)
     {
-        if( m_cvtflag == CVT_FLAG_NOCVT )       // plain text
+        if (m_cvtflag == CVT_FLAG_NOCVT)       // plain text
         {
-            dst.append( m_content.buf, m_content.len );
+            dst.append(m_content.buf, m_content.len);
         }
-        else if( m_cvtflag == CVT_FLAG_CDATA )  // CDATA 
+        else if (m_cvtflag == CVT_FLAG_CDATA)  // CDATA 
         {
             dst += "<![CDATA[";
-            dst.append( m_content.buf, m_content.len );
+            dst.append(m_content.buf, m_content.len);
             dst += "]]>";
         }
         else    // default, may need escape
         {
-            escape_xml_string( m_content.buf, dst );
+            escape_xml_string(m_content.buf, dst);
         }
     }
 
     // child elements
-    if( m_childCnt > 0 )
+    if (m_childCnt > 0)
     {
         dst += '\n';
         const XmlElem* elem = m_children.m_firstNode;
-        while( elem )
+        while (elem)
         {
-            elem->format( dst );
+            elem->format(dst);
             elem = elem->next_sibling();
         }
     }
 
     // end-tag 
-    dst.append( "</", 2 );
-    dst.append( m_tag.buf, m_tag.len );
-    dst.append( ">\n", 2 );
+    dst.append("</", 2);
+    dst.append(m_tag.buf, m_tag.len);
+    dst.append(">\n", 2);
 }
 
 // format element with indent, add to the tail of the output string
-void XmlElem::format( std::string & dst, int indent ) const
+void XmlElem::format(std::string & dst, int indent) const
 {
-    if( m_tag.len <= 0 )
+    if (m_tag.len <= 0)
         return;
 
     // comment
-    if( m_comment.len > 0 )
+    if (m_comment.len > 0)
     {
-        dst.append( indent, ' ' );
+        dst.append(indent, ' ');
         dst += "<!-- ";
-        dst.append( m_comment.buf, m_comment.len );
+        dst.append(m_comment.buf, m_comment.len);
         dst += " -->\n";
     }
 
     // start-tag
-    dst.append( indent, ' ' );
+    dst.append(indent, ' ');
     dst += '<';
-    dst.append( m_tag.buf, m_tag.len );
+    dst.append(m_tag.buf, m_tag.len);
 
     // attributes
     const XmlAttr* attr = m_attrList.m_firstNode;
-    while( attr )
+    while (attr)
     {
         dst += ' ';
-        attr->format( dst );
+        attr->format(dst);
         attr = attr->next_sibling();
     }
 
     // check empty element
-    if( m_content.len == 0 && m_childCnt == 0 )
+    if (m_content.len == 0 && m_childCnt == 0)
     {
-        dst.append( "/>\n", 3 );     // end tag
+        dst.append("/>\n", 3);     // end tag
         return;
     }
     dst += '>';
 
     // element content
-    if( m_content.len > 0 )
+    if (m_content.len > 0)
     {
-        if( m_cvtflag == CVT_FLAG_NOCVT )       // plain text
+        if (m_cvtflag == CVT_FLAG_NOCVT)       // plain text
         {
-            dst.append( m_content.buf, m_content.len );
+            dst.append(m_content.buf, m_content.len);
         }
-        else if( m_cvtflag == CVT_FLAG_CDATA )  // CDATA 
+        else if (m_cvtflag == CVT_FLAG_CDATA)  // CDATA 
         {
             dst += "<![CDATA[";
-            dst.append( m_content.buf, m_content.len );
+            dst.append(m_content.buf, m_content.len);
             dst += "]]>";
         }
         else    // default, may need escape
         {
-            escape_xml_string( m_content.buf, dst );
+            escape_xml_string(m_content.buf, dst);
         }
     }
 
     // children elements
-    if( m_childCnt > 0 )
+    if (m_childCnt > 0)
     {
         const int indent2 = MIN(indent + 2, XmlDoc::kMaxIndent);
         dst += '\n';
 
         const XmlElem* elem = m_children.m_firstNode;
-        while( elem )
+        while (elem)
         {
-            elem->format( dst, indent2 );
+            elem->format(dst, indent2);
             elem = elem->next_sibling();
         }
 
-        dst.append( indent, ' ' );
+        dst.append(indent, ' ');
     }
 
     // end-tag
-    dst.append( "</", 2 );
-    dst.append( m_tag.buf, m_tag.len );
-    dst.append( ">\n", 2 );
+    dst.append("</", 2);
+    dst.append(m_tag.buf, m_tag.len);
+    dst.append(">\n", 2);
 }
 
 // parse XML text, return characters consumed, return -1 if failed
-int XmlElem::parse( const char* text, int depth )
+int XmlElem::parse(const char* text, int depth)
 {
-    assert( text[0] == '<' );
-    if( depth > XmlDoc::kMaxDepth )     // prevent stack overflow
+    assert(text[0] == '<');
+    if (depth > XmlDoc::kMaxDepth)     // prevent stack overflow
         return -1;
 
     // parse tag
     int k = 1;
-    while( IS_NAMECHAR( text[k] ) )
+    while (IS_NAMECHAR(text[k]))
         k++;
-    if( k == 1 )    // invalid name
+    if (k == 1)    // invalid name
         return -1;
-    m_tag.assign( m_alloc, text + 1, k - 1 );
+    m_tag.assign(m_alloc, text + 1, k - 1);
 
     // parse attributes
-    while( 1 )
+    while (1)
     {
         // skip whitespace
-        while( IS_SPACE( text[k] ) )
+        while (IS_SPACE(text[k]))
             k++;
-        
-        if( text[k] == '>' )    // end of start-tag
+
+        if (text[k] == '>')    // end of start-tag
         {
             k++;
             break;
         }
-        else if( text[k] == '/' )
+        else if (text[k] == '/')
         {
-            if( text[k+1] == '>' )  // empty element
+            if (text[k + 1] == '>')  // empty element
                 return k + 2;
             else
                 return -1;
         }
         else    // attribute
         {
-            if( !IS_NAMECHAR( text[k] ) )
+            if (!IS_NAMECHAR(text[k]))
                 return -1;
             XmlAttr* attr = this->add_null_attr();
-            int used = attr->parse( text + k );
-            if( used <= 0 )
+            int used = attr->parse(text + k);
+            if (used <= 0)
                 return -1;
             k += used;
         }
     }
 
     // parse content and child elements
-    while( 1 )
+    while (1)
     {
         // skip whitespace
-        while( IS_SPACE( text[k] ) )
+        while (IS_SPACE(text[k]))
         {
             k++;
         }
 
-        if( text[k] == '<' )
+        if (text[k] == '<')
         {
-            if( text[k+1] == '/' )      // end-tag
+            if (text[k + 1] == '/')      // end-tag
             {
                 k += 2;
                 break;
             }
-            else if( text[k+1] == '!' )
+            else if (text[k + 1] == '!')
             {
-                if( text[k+2] == '-' && text[k+3] == '-' )      // comment
+                if (text[k + 2] == '-' && text[k + 3] == '-')      // comment
                 {
-                    const char* end = strstr( text + k + 4, "-->" );
-                    if( !end )
+                    const char* end = strstr(text + k + 4, "-->");
+                    if (!end)
                         return -1;
                     k = (int)(end - text) + 3;
                 }
-                else if( str_begwith( text + k + 2, "[CDATA[" ) )   // CDATA
+                else if (str_begwith(text + k + 2, "[CDATA["))   // CDATA
                 {
                     const char* cdata = text + k + 9;
-                    const char* end = strstr( cdata, "]]>" );
-                    if( !end )
+                    const char* end = strstr(cdata, "]]>");
+                    if (!end)
                         return -1;
                     k = (int)(end - text) + 3;
-                    m_content.append( m_alloc, cdata, (int)(end - cdata) );
+                    m_content.append(m_alloc, cdata, (int)(end - cdata));
                 }
                 else    // DTD is not allowed in element content
                 {
                     return -1;
                 }
             }
-            else if( text[k+1] == '?' ) // processing instructions
+            else if (text[k + 1] == '?') // processing instructions
             {
-                const char* end = strstr( text + k + 2, "?>" );
-                if( !end )
+                const char* end = strstr(text + k + 2, "?>");
+                if (!end)
                     return -1;
                 k = (int)(end - text) + 2;
             }
             else    // child element
             {
                 XmlElem* child = this->add_null_child();
-                int used = child->parse( text + k, depth + 1 );
-                if( used <= 0 )
+                int used = child->parse(text + k, depth + 1);
+                if (used <= 0)
                     return -1;
                 k += used;
             }
@@ -1140,23 +1141,23 @@ int XmlElem::parse( const char* text, int depth )
         else    // element content
         {
             std::string& temp = m_alloc->temp_string();
-            int used = parse_xml_content( text + k, temp );
-            if( used <= 0 )
+            int used = parse_xml_content(text + k, temp);
+            if (used <= 0)
                 return used;
             k += used;
-            m_content.append( m_alloc, temp );
+            m_content.append(m_alloc, temp);
         }
     }
 
     // end-tag should match start-tag
-    if( strncmp( text + k, m_tag.buf, m_tag.len ) != 0 )
+    if (strncmp(text + k, m_tag.buf, m_tag.len) != 0)
         return -1;
     k += m_tag.len;
 
     // skip space
-    while( IS_SPACE( text[k] ) )
+    while (IS_SPACE(text[k]))
         k++;
-    if( text[k] != '>' )
+    if (text[k] != '>')
         return -1;
 
     return k + 1;
@@ -1170,103 +1171,103 @@ XmlDoc::XmlDoc() : m_allocator(nullptr), m_root(nullptr)
 
 XmlDoc::~XmlDoc()
 {
-    if( m_root )
+    if (m_root)
     {
-        m_allocator->trash( m_root );
+        m_allocator->trash(m_root);
         m_root = nullptr;
     }
     delete m_allocator;
 }
 
-XmlStatus XmlDoc::parse_file( CFile& file )
+XmlStatus XmlDoc::parse_file(CFile& file)
 {
-    if( !file  )
+    if (!file)
         return XmlStatus::IOFailed;
 
     // check file size
     const int64_t filesz = file.file_size();
-    if( filesz < 0 )
+    if (filesz < 0)
         return XmlStatus::IOFailed;
-    else if( filesz > 128 * 1024 * 1024 )   // this utility is not for huge file!
+    else if (filesz > 128 * 1024 * 1024)   // this utility is not for huge file!
         return XmlStatus::Unsupported;
-    
+
     // read file into temp memory, add padding
     MallocedBuf mBuf;
-    uint8_t* text = (uint8_t*)mBuf.alloc( (int)filesz + 4 );    // must use uint8_t to compare to BOM
-    size_t readcnt = fread( text, 1, filesz, file );
-    if( readcnt == 0 )
+    uint8_t* text = (uint8_t*)mBuf.alloc((int)filesz + 4);    // must use uint8_t to compare to BOM
+    size_t readcnt = fread(text, 1, filesz, file);
+    if (readcnt == 0)
         return XmlStatus::IOFailed;
     text[readcnt] = 0;
-    text[readcnt+1] = 0;
+    text[readcnt + 1] = 0;
 
     // check BOM, has padding, so always safe
-    if( text[0]==0xEF && text[1]==0xBB && text[2]==0xBF )   // UTF-8
+    if (text[0] == 0xEF && text[1] == 0xBB && text[2] == 0xBF)   // UTF-8
     {
         text += 3;      // skip BOM
     }
-    else if( text[0]==0xFF && text[1]==0xFE )   // UTF-16, little-endian
+    else if (text[0] == 0xFF && text[1] == 0xFE)   // UTF-16, little-endian
     {
         return XmlStatus::Unsupported;
     }
-    else if( text[0]==0xFE && text[1]==0xFF )   // UTF-16, big-endian
+    else if (text[0] == 0xFE && text[1] == 0xFF)   // UTF-16, big-endian
     {
         return XmlStatus::Unsupported;
     }
 
     // parse XML text
-    return this->parse_text( (char*)text );
+    return this->parse_text((char*)text);
 }
 
-XmlStatus XmlDoc::write_file( CFile& file, const std::string& xmlstr )
+XmlStatus XmlDoc::write_file(CFile& file, const std::string& xmlstr)
 {
-    if( file )
+    if (file)
     {
-        if( fprintf( file, "%s", xmlstr.c_str() ) > 0 )
+        if (fprintf(file, "%s", xmlstr.c_str()) > 0)
             return XmlStatus::Ok;
     }
     return XmlStatus::IOFailed;
 }
 
-XmlStatus XmlDoc::parse_file( const char* filepath )
+XmlStatus XmlDoc::parse_file(const char* filepath)
 {
-    CFile file( filepath, "r" );
-    return this->parse_file( file );
+    CFile file(filepath, "r");
+    return this->parse_file(file);
 }
 
-XmlStatus XmlDoc::parse_text( const char* text )
+XmlStatus XmlDoc::parse_text(const char* text)
 {
     // delete old document(if exists)
-    if( m_root )
+    if (m_root)
     {
-        m_allocator->trash( m_root );
+        m_allocator->trash(m_root);
         m_root = nullptr;
     }
 
     // skip leading whitespace
     const char* s = text;
-    while( IS_SPACE(*s) )
+    while (IS_SPACE(*s))
         s++;
-    if( *s != '<' )
+    if (*s != '<')
         return XmlStatus::Invalid;
 
     // skip XML prolog(declaration, DTD, comment, etc)
-    while( 1 )
+    while (1)
     {
-        assert( s[0] == '<' );
+        assert(s[0] == '<');
 
-        if( s[1] == '?' )       // XML declaration, processing instructions
+        if (s[1] == '?')        // XML declaration, processing instructions
         {
-            const char* t = strstr( s + 2, "?>" );
-            if( !t )
+            const char* t = strstr(s + 2, "?>");
+            if (!t)
                 return XmlStatus::Invalid;
             s = t + 2;
         }
-        else if( s[1] == '!' )  // DTD or comment
+        else if (s[1] == '!')   // DTD or comment
         {
-            if( s[2] == '-' && s[3] == '-' )    // comment
+            if (s[2] == '-' && s[3] == '-') // comment
             {
-                const char* t = strstr( s + 4, "-->" );
-                if( !t )
+                const char* t = strstr(s + 4, "-->");
+                if (!t)
                     return XmlStatus::Invalid;
                 s = t + 3;
             }
@@ -1274,16 +1275,16 @@ XmlStatus XmlDoc::parse_text( const char* text )
             {
                 s += 2;
 
-                if( str_begwith( s, "DOCTYPE" ) )
-                    s += lengthof( "DOCTYPE" );
-                else if( str_begwith( s, "ELEMENT" ) )
-                    s += lengthof( "ELEMENT" );
-                else if( str_begwith( s, "ENTITY" ) )
-                    s += lengthof( "ENTITY" );
-                else if( str_begwith( s, "ATTLIST" ) )
-                    s += lengthof( "ATTLIST" );
-                else if( str_begwith( s, "NOTATION" ) )
-                    s += lengthof( "NOTATION" );
+                if (str_begwith(s, "DOCTYPE"))
+                    s += lengthof("DOCTYPE");
+                else if (str_begwith(s, "ELEMENT"))
+                    s += lengthof("ELEMENT");
+                else if (str_begwith(s, "ENTITY"))
+                    s += lengthof("ENTITY");
+                else if (str_begwith(s, "ATTLIST"))
+                    s += lengthof("ATTLIST");
+                else if (str_begwith(s, "NOTATION"))
+                    s += lengthof("NOTATION");
                 else
                     return XmlStatus::Invalid;
             }
@@ -1294,17 +1295,17 @@ XmlStatus XmlDoc::parse_text( const char* text )
         }
 
         // find next '<'
-        while( *s != '<' && *s != 0 )
+        while (*s != '<' && *s != 0)
             s++;
-        if( *s == 0 )
+        if (*s == 0)
             return XmlStatus::Invalid;
     }
 
-    assert( !m_root );
-    m_root = m_allocator->create<XmlElem>( m_allocator );
-    if( m_root->parse( s, 0 ) < 0 )
+    assert(!m_root);
+    m_root = m_allocator->create<XmlElem>(m_allocator);
+    if (m_root->parse(s, 0) < 0)
     {
-        m_allocator->trash( m_root );
+        m_allocator->trash(m_root);
         m_root = nullptr;
         return XmlStatus::Invalid;
     }
@@ -1312,96 +1313,96 @@ XmlStatus XmlDoc::parse_text( const char* text )
     return XmlStatus::Ok;
 }
 
-XmlElem* XmlDoc::create_xml( const char* rootTag )
+XmlElem* XmlDoc::create_xml(const char* rootTag)
 {
     // delete old document(if exists)
-    if( m_root )
+    if (m_root)
     {
-        m_allocator->trash( m_root );
+        m_allocator->trash(m_root);
         m_root = nullptr;
     }
 
-    m_root = m_allocator->create<XmlElem>( m_allocator );
-    m_root->set_tag( rootTag );
+    m_root = m_allocator->create<XmlElem>(m_allocator);
+    m_root->set_tag(rootTag);
     return m_root;
 }
 
-XmlStatus XmlDoc::dump_file( const char* filename )
+XmlStatus XmlDoc::dump_file(const char* filename)
 {
     string tmpstr;
-    auto res = this->dump_text( tmpstr );
-    if( res != XmlStatus::Ok )
+    auto res = this->dump_text(tmpstr);
+    if (res != XmlStatus::Ok)
         return res;
 
-    CFile file( filename, "w" );
-    return this->write_file( file, tmpstr );
+    CFile file(filename, "w");
+    return this->write_file(file, tmpstr);
 }
 
-XmlStatus XmlDoc::dump_text( std::string& out )
+XmlStatus XmlDoc::dump_text(std::string& out)
 {
-    if( !m_root )
+    if (!m_root)
         return XmlStatus::Invalid;
 
     out.clear();
-    out.reserve( 4096 );
+    out.reserve(4096);
     out = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-    m_root->format( out );
+    m_root->format(out);
 
     return XmlStatus::Ok;
 }
 
-XmlStatus XmlDoc::pretty_dump_file( const char* filename )
+XmlStatus XmlDoc::pretty_dump_file(const char* filename)
 {
     string tmpstr;
-    auto res = this->pretty_dump_text( tmpstr );
-    if( res != XmlStatus::Ok )
+    auto res = this->pretty_dump_text(tmpstr);
+    if (res != XmlStatus::Ok)
         return res;
 
-    CFile file( filename, "w" );
-    return this->write_file( file, tmpstr );
+    CFile file(filename, "w");
+    return this->write_file(file, tmpstr);
 }
 
-XmlStatus XmlDoc::pretty_dump_text( std::string& out )
+XmlStatus XmlDoc::pretty_dump_text(std::string& out)
 {
-    if( !m_root )
+    if (!m_root)
         return XmlStatus::Invalid;
 
     out.clear();
-    out.reserve( 4096 );
+    out.reserve(4096);
     out = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-    m_root->format( out, 0 );
+    m_root->format(out, 0);
 
     return XmlStatus::Ok;
 }
 
 #ifdef _WIN32
 
-XmlStatus XmlDoc::parse_file( const wchar_t* filepath )
+XmlStatus XmlDoc::parse_file(const wchar_t* filepath)
 {
-    CFile file( filepath, L"r" );
-    return this->parse_file( file );
+    CFile file(filepath, L"r");
+    return this->parse_file(file);
 }
 
-XmlStatus XmlDoc::dump_file( const wchar_t* filename )
+XmlStatus XmlDoc::dump_file(const wchar_t* filename)
 {
     string tmpstr;
-    auto res = this->dump_text( tmpstr );
-    if( res != XmlStatus::Ok )
+    auto res = this->dump_text(tmpstr);
+    if (res != XmlStatus::Ok)
         return res;
 
-    CFile file( filename, L"w" );
-    return this->write_file( file, tmpstr );
+    CFile file(filename, L"w");
+    return this->write_file(file, tmpstr);
 }
 
-XmlStatus XmlDoc::pretty_dump_file( const wchar_t* filename )
+XmlStatus XmlDoc::pretty_dump_file(const wchar_t* filename)
 {
     string tmpstr;
-    auto res = this->pretty_dump_text( tmpstr );
-    if( res != XmlStatus::Ok )
+    auto res = this->pretty_dump_text(tmpstr);
+    if (res != XmlStatus::Ok)
         return res;
 
-    CFile file( filename, L"w" );
-    return this->write_file( file, tmpstr );
+    CFile file(filename, L"w");
+    return this->write_file(file, tmpstr);
 }
 
 #endif

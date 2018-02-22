@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -19,7 +19,8 @@
 #include <type_traits>
 #include "../IrkRational.h"
 
-namespace irk { namespace detail {
+namespace irk {
+namespace detail {
 
 // faked type id
 enum
@@ -41,7 +42,7 @@ template<typename T>
 struct BoxTid
 {
     // faked type id, not perfect but simple
-    static_assert( !std::is_scalar<T>::value && !std::is_reference<T>::value, "" );
+    static_assert(!std::is_scalar<T>::value && !std::is_reference<T>::value, "");
     static const uint32_t tid = TYPEID_OBJ + static_cast<uint32_t>(sizeof(T));
 };
 template<typename T>
@@ -124,8 +125,8 @@ struct BoxTid<Rational>
 struct IBoxedObj
 {
     IBoxedObj() = default;
-    IBoxedObj( const IBoxedObj& ) = delete;
-    IBoxedObj& operator=( const IBoxedObj& ) = delete;
+    IBoxedObj(const IBoxedObj&) = delete;
+    IBoxedObj& operator=(const IBoxedObj&) = delete;
     virtual ~IBoxedObj() {}
     virtual bool copyable() const = 0;
     virtual IBoxedObj* clone() const = 0;
@@ -135,9 +136,9 @@ template<typename T>
 struct BoxedObj : public IBoxedObj
 {
     template<typename... Args>
-    explicit BoxedObj( Args&&... args ) : m_obj{std::forward<Args>(args)...} {};
+    explicit BoxedObj(Args&&... args) : m_obj{std::forward<Args>(args)...} {};
     ~BoxedObj() override {}
-    bool copyable() const override  { return std::is_copy_constructible<T>::value; }
+    bool copyable() const override { return std::is_copy_constructible<T>::value; }
     IBoxedObj* clone() const override;
     T m_obj;
 };
@@ -145,33 +146,33 @@ struct BoxedObj : public IBoxedObj
 template<typename T, bool Copyable>
 struct BoxClone
 {
-    static IBoxedObj* clone( const T& ) 
-    { 
-        static_assert( !std::is_copy_constructible<T>::value, "" );
-        assert( false );    // should never be called
+    static IBoxedObj* clone(const T&)
+    {
+        static_assert(!std::is_copy_constructible<T>::value, "");
+        assert(false);  // should never be called
         return nullptr;
     }
 };
 template<typename T>
 struct BoxClone<T, true>
 {
-    static IBoxedObj* clone( const T& obj ) 
-    { 
-        static_assert( std::is_copy_constructible<T>::value, "" );
-        return new BoxedObj<T>( obj );
+    static IBoxedObj* clone(const T& obj)
+    {
+        static_assert(std::is_copy_constructible<T>::value, "");
+        return new BoxedObj<T>(obj);
     }
 };
 
 template<typename T>
 inline IBoxedObj* BoxedObj<T>::clone() const
 {
-    return BoxClone<T,std::is_copy_constructible<T>::value>::clone( m_obj );
+    return BoxClone<T, std::is_copy_constructible<T>::value>::clone(m_obj);
 }
 
 template<typename T, typename... Args>
-inline BoxedObj<T>* make_boxed_obj( Args&&... args )
+inline BoxedObj<T>* make_boxed_obj(Args&&... args)
 {
-    return new BoxedObj<T>( std::forward<Args>(args)... );
+    return new BoxedObj<T>(std::forward<Args>(args)...);
 }
 
 struct BoxData
@@ -193,27 +194,27 @@ struct BoxData
 
     void reset()
     {
-        if( this->tid >= TYPEID_OBJ )   // no-scalar value
+        if (this->tid >= TYPEID_OBJ)   // no-scalar value
             delete this->pobj;
         this->tid = TYPEID_INVALID;
     }
 
     BoxData() : tid(TYPEID_INVALID) {}
-    BoxData( const BoxData& other ) = default;
-    BoxData& operator=( const BoxData& ) = default;
+    BoxData(const BoxData& other) = default;
+    BoxData& operator=(const BoxData&) = default;
     ~BoxData() { this->reset(); }
 
-    void copy_from( const BoxData& src )
+    void copy_from(const BoxData& src)
     {
-        assert( this->tid == TYPEID_INVALID );
+        assert(this->tid == TYPEID_INVALID);
 
-        if( src.tid < detail::TYPEID_OBJ )      // scalar types
+        if (src.tid < detail::TYPEID_OBJ)       // scalar types
         {
             *this = src;
         }
         else
         {
-            irk_expect( src.pobj->copyable() ); // must be copyable
+            irk_expect(src.pobj->copyable());   // must be copyable
             this->pobj = src.pobj->clone();
             this->tid = src.tid;
         }
@@ -224,22 +225,22 @@ struct BoxData
 template<typename T>
 struct BoxUnwrap
 {
-    static_assert( !std::is_scalar<T>::value && !std::is_reference<T>::value, "" );
+    static_assert(!std::is_scalar<T>::value && !std::is_reference<T>::value, "");
 
-    static inline bool matched( const BoxData& box )    // can get data of the type ?
+    static inline bool matched(const BoxData& box)  // can get data of the type ?
     {
         return BoxTid<T>::tid == box.tid;
     }
-    static inline T& get( const BoxData& box )      // unwrap box and get real data
+    static inline T& get(const BoxData& box)        // unwrap box and get real data
     {
-        assert( BoxTid<T>::tid == box.tid && box.tid > TYPEID_OBJ );
-        auto realobj = static_cast<BoxedObj<T>*>( box.pobj );
+        assert(BoxTid<T>::tid == box.tid && box.tid > TYPEID_OBJ);
+        auto realobj = static_cast<BoxedObj<T>*>(box.pobj);
         return realobj->m_obj;
     }
-    static inline T* getptr( const BoxData& box )   // unwrap box and get real data
+    static inline T* getptr(const BoxData& box)     // unwrap box and get real data
     {
-        assert( BoxTid<T>::tid == box.tid && box.tid > TYPEID_OBJ );
-        auto realobj = static_cast<BoxedObj<T>*>( box.pobj );
+        assert(BoxTid<T>::tid == box.tid && box.tid > TYPEID_OBJ);
+        auto realobj = static_cast<BoxedObj<T>*>(box.pobj);
         return &(realobj->m_obj);
     }
 };
@@ -247,27 +248,27 @@ struct BoxUnwrap
 template<typename T>
 struct BoxUnwrap<T*>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
         return BoxTid<T*>::tid == box.tid;
     }
-    static inline T* get( const BoxData& box )
+    static inline T* get(const BoxData& box)
     {
-        assert( BoxTid<T*>::tid == box.tid );
-        return reinterpret_cast<T*>( box.ptr );
+        assert(BoxTid<T*>::tid == box.tid);
+        return reinterpret_cast<T*>(box.ptr);
     }
 };
 
 template<>
 struct BoxUnwrap<bool>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
         return BoxTid<bool>::tid == box.tid;
     }
-    static inline bool get( const BoxData& box )
+    static inline bool get(const BoxData& box)
     {
-        assert( BoxTid<bool>::tid == box.tid );
+        assert(BoxTid<bool>::tid == box.tid);
         return box.flag;
     }
 };
@@ -275,25 +276,25 @@ struct BoxUnwrap<bool>
 template<>
 struct BoxUnwrap<float>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
-        return (TYPEID_FLOAT == box.tid || 
-                TYPEID_DOUBLE == box.tid ||
-                TYPEID_INT32 == box.tid ||
-                TYPEID_UINT32 == box.tid );
+        return (TYPEID_FLOAT == box.tid ||
+            TYPEID_DOUBLE == box.tid ||
+            TYPEID_INT32 == box.tid ||
+            TYPEID_UINT32 == box.tid);
     }
-    static inline float get( const BoxData& box )
+    static inline float get(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
-            return static_cast<float>( box.i32 );
+            return static_cast<float>(box.i32);
         case TYPEID_UINT32:
-            return static_cast<float>( box.u32 );
+            return static_cast<float>(box.u32);
         case TYPEID_FLOAT:
             return box.f32;
         case TYPEID_DOUBLE:
-            return static_cast<float>( box.f64 );
+            return static_cast<float>(box.f64);
         default:
             assert(0);
             break;
@@ -305,27 +306,27 @@ struct BoxUnwrap<float>
 template<>
 struct BoxUnwrap<double>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
-        return (TYPEID_DOUBLE == box.tid || 
-                TYPEID_FLOAT == box.tid ||
-                TYPEID_INT32 == box.tid ||
-                TYPEID_UINT32 == box.tid ||
-                TYPEID_INT64 == box.tid ||
-                TYPEID_UINT64 == box.tid );
+        return (TYPEID_DOUBLE == box.tid ||
+            TYPEID_FLOAT == box.tid ||
+            TYPEID_INT32 == box.tid ||
+            TYPEID_UINT32 == box.tid ||
+            TYPEID_INT64 == box.tid ||
+            TYPEID_UINT64 == box.tid);
     }
-    static inline double get( const BoxData& box )
+    static inline double get(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
-            return static_cast<double>( box.i32 );
+            return static_cast<double>(box.i32);
         case TYPEID_UINT32:
-            return static_cast<double>( box.u32 );
+            return static_cast<double>(box.u32);
         case TYPEID_INT64:
-            return static_cast<double>( box.i64 );
+            return static_cast<double>(box.i64);
         case TYPEID_UINT64:
-            return static_cast<double>( box.u64 );
+            return static_cast<double>(box.u64);
         case TYPEID_FLOAT:
             return box.f32;
         case TYPEID_DOUBLE:
@@ -341,13 +342,13 @@ struct BoxUnwrap<double>
 template<>
 struct BoxUnwrap<Rational>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
         return BoxTid<Rational>::tid == box.tid;
     }
-    static inline Rational get( const BoxData& box )
+    static inline Rational get(const BoxData& box)
     {
-        assert( BoxTid<Rational>::tid == box.tid );
+        assert(BoxTid<Rational>::tid == box.tid);
         return box.rational;
     }
 };
@@ -355,9 +356,9 @@ struct BoxUnwrap<Rational>
 template<>
 struct BoxUnwrap<char>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
             return (box.i32 >= CHAR_MIN && box.i32 <= CHAR_MAX);
@@ -372,18 +373,18 @@ struct BoxUnwrap<char>
         }
         return false;
     }
-    static inline char get( const BoxData& box )
+    static inline char get(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
-            return static_cast<char>( box.i32 );
+            return static_cast<char>(box.i32);
         case TYPEID_UINT32:
-            return static_cast<char>( box.u32 );
+            return static_cast<char>(box.u32);
         case TYPEID_INT64:
-            return static_cast<char>( box.i64 );
+            return static_cast<char>(box.i64);
         case TYPEID_UINT64:
-            return static_cast<char>( box.u64 );
+            return static_cast<char>(box.u64);
         default:
             assert(0);
             break;
@@ -395,9 +396,9 @@ struct BoxUnwrap<char>
 template<>
 struct BoxUnwrap<int8_t>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
             return (box.i32 >= INT8_MIN && box.i32 <= INT8_MAX);
@@ -412,18 +413,18 @@ struct BoxUnwrap<int8_t>
         }
         return false;
     }
-    static inline int8_t get( const BoxData& box )
+    static inline int8_t get(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
-            return static_cast<int8_t>( box.i32 );
+            return static_cast<int8_t>(box.i32);
         case TYPEID_UINT32:
-            return static_cast<int8_t>( box.u32 );
+            return static_cast<int8_t>(box.u32);
         case TYPEID_INT64:
-            return static_cast<int8_t>( box.i64 );
+            return static_cast<int8_t>(box.i64);
         case TYPEID_UINT64:
-            return static_cast<int8_t>( box.u64 );
+            return static_cast<int8_t>(box.u64);
         default:
             assert(0);
             break;
@@ -435,9 +436,9 @@ struct BoxUnwrap<int8_t>
 template<>
 struct BoxUnwrap<int16_t>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
             return (box.i32 >= INT16_MIN && box.i32 <= INT16_MAX);
@@ -452,18 +453,18 @@ struct BoxUnwrap<int16_t>
         }
         return false;
     }
-    static inline int16_t get( const BoxData& box )
+    static inline int16_t get(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
-            return static_cast<int16_t>( box.i32 );
+            return static_cast<int16_t>(box.i32);
         case TYPEID_UINT32:
-            return static_cast<int16_t>( box.u32 );
+            return static_cast<int16_t>(box.u32);
         case TYPEID_INT64:
-            return static_cast<int16_t>( box.i64 );
+            return static_cast<int16_t>(box.i64);
         case TYPEID_UINT64:
-            return static_cast<int16_t>( box.u64 );
+            return static_cast<int16_t>(box.u64);
         default:
             assert(0);
             break;
@@ -475,9 +476,9 @@ struct BoxUnwrap<int16_t>
 template<>
 struct BoxUnwrap<int32_t>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
             return true;
@@ -492,18 +493,18 @@ struct BoxUnwrap<int32_t>
         }
         return false;
     }
-    static inline int32_t get( const BoxData& box )
+    static inline int32_t get(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
             return box.i32;
         case TYPEID_UINT32:
-            return static_cast<int32_t>( box.u32 );
+            return static_cast<int32_t>(box.u32);
         case TYPEID_INT64:
-            return static_cast<int32_t>( box.i64 );
+            return static_cast<int32_t>(box.i64);
         case TYPEID_UINT64:
-            return static_cast<int32_t>( box.u64 );
+            return static_cast<int32_t>(box.u64);
         default:
             assert(0);
             break;
@@ -515,9 +516,9 @@ struct BoxUnwrap<int32_t>
 template<>
 struct BoxUnwrap<int64_t>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
         case TYPEID_UINT32:
@@ -530,9 +531,9 @@ struct BoxUnwrap<int64_t>
         }
         return false;
     }
-    static inline int64_t get( const BoxData& box )
+    static inline int64_t get(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
             return box.i32;
@@ -541,7 +542,7 @@ struct BoxUnwrap<int64_t>
         case TYPEID_INT64:
             return box.i64;
         case TYPEID_UINT64:
-            return static_cast<int64_t>( box.u64 );
+            return static_cast<int64_t>(box.u64);
         default:
             assert(0);
             break;
@@ -553,9 +554,9 @@ struct BoxUnwrap<int64_t>
 template<>
 struct BoxUnwrap<uint8_t>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
             return (box.i32 >= 0 && box.i32 <= UINT8_MAX);
@@ -570,18 +571,18 @@ struct BoxUnwrap<uint8_t>
         }
         return false;
     }
-    static inline uint8_t get( const BoxData& box )
+    static inline uint8_t get(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
-            return static_cast<uint8_t>( box.i32 );
+            return static_cast<uint8_t>(box.i32);
         case TYPEID_UINT32:
-            return static_cast<uint8_t>( box.u32 );
+            return static_cast<uint8_t>(box.u32);
         case TYPEID_INT64:
-            return static_cast<uint8_t>( box.i64 );
+            return static_cast<uint8_t>(box.i64);
         case TYPEID_UINT64:
-            return static_cast<uint8_t>( box.u64 );
+            return static_cast<uint8_t>(box.u64);
         default:
             assert(0);
             break;
@@ -593,9 +594,9 @@ struct BoxUnwrap<uint8_t>
 template<>
 struct BoxUnwrap<uint16_t>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
             return (box.i32 >= 0 && box.i32 <= UINT16_MAX);
@@ -610,18 +611,18 @@ struct BoxUnwrap<uint16_t>
         }
         return false;
     }
-    static inline uint16_t get( const BoxData& box )
+    static inline uint16_t get(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
-            return static_cast<uint16_t>( box.i32 );
+            return static_cast<uint16_t>(box.i32);
         case TYPEID_UINT32:
-            return static_cast<uint16_t>( box.u32 );
+            return static_cast<uint16_t>(box.u32);
         case TYPEID_INT64:
-            return static_cast<uint16_t>( box.i64 );
+            return static_cast<uint16_t>(box.i64);
         case TYPEID_UINT64:
-            return static_cast<uint16_t>( box.u64 );
+            return static_cast<uint16_t>(box.u64);
         default:
             assert(0);
             break;
@@ -633,9 +634,9 @@ struct BoxUnwrap<uint16_t>
 template<>
 struct BoxUnwrap<uint32_t>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
             return (box.i32 >= 0);
@@ -650,18 +651,18 @@ struct BoxUnwrap<uint32_t>
         }
         return false;
     }
-    static inline uint32_t get( const BoxData& box )
+    static inline uint32_t get(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
-            return static_cast<uint32_t>( box.i32 );
+            return static_cast<uint32_t>(box.i32);
         case TYPEID_UINT32:
             return box.u32;
         case TYPEID_INT64:
-            return static_cast<uint32_t>( box.i64 );
+            return static_cast<uint32_t>(box.i64);
         case TYPEID_UINT64:
-            return static_cast<uint32_t>( box.u64 );
+            return static_cast<uint32_t>(box.u64);
         default:
             assert(0);
             break;
@@ -673,9 +674,9 @@ struct BoxUnwrap<uint32_t>
 template<>
 struct BoxUnwrap<uint64_t>
 {
-    static inline bool matched( const BoxData& box )
+    static inline bool matched(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
             return (box.i32 >= 0);
@@ -689,16 +690,16 @@ struct BoxUnwrap<uint64_t>
         }
         return false;
     }
-    static inline uint64_t get( const BoxData& box )
+    static inline uint64_t get(const BoxData& box)
     {
-        switch( box.tid )
+        switch (box.tid)
         {
         case TYPEID_INT32:
-            return static_cast<uint64_t>( box.i32 );
+            return static_cast<uint64_t>(box.i32);
         case TYPEID_UINT32:
             return box.u32;
         case TYPEID_INT64:
-            return static_cast<uint64_t>( box.i64 );
+            return static_cast<uint64_t>(box.i64);
         case TYPEID_UINT64:
             return box.u64;
         default:

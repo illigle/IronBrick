@@ -1,13 +1,13 @@
 /*
 * This Source Code Form is subject to the terms of the Mozilla Public License Version 2.0.
-* If a copy of the MPL was not distributed with this file, 
+* If a copy of the MPL was not distributed with this file,
 * You can obtain one at http://mozilla.org/MPL/2.0/.
 
-* Covered Software is provided on an "as is" basis, 
+* Covered Software is provided on an "as is" basis,
 * without warranty of any kind, either expressed, implied, or statutory,
-* that the Covered Software is free of defects, merchantable, 
+* that the Covered Software is free of defects, merchantable,
 * fit for a particular purpose or non-infringing.
- 
+
 * Copyright (c) Wei Dongliang <illigle@163.com>.
 */
 
@@ -46,19 +46,19 @@ class BaseSocket
     // NOTE: most methods return 0 if succeeded, return system error code if failed
 public:
     // create a socket
-    int open( int family, int type, int protocol )
+    int open(int family, int type, int protocol)
     {
-        assert( m_sockfd == INVALID_SOCKET );
-        m_sockfd = ::socket( family, type, protocol );
+        assert(m_sockfd == INVALID_SOCKET);
+        m_sockfd = ::socket(family, type, protocol);
         return (m_sockfd != INVALID_SOCKET) ? 0 : socket_last_err();
     }
 
     // close socket
     int close()
     {
-        if( m_sockfd != INVALID_SOCKET )
+        if (m_sockfd != INVALID_SOCKET)
         {
-            if( ::closesocket( m_sockfd ) != 0 )
+            if (::closesocket(m_sockfd) != 0)
                 return socket_last_err();
             m_sockfd = INVALID_SOCKET;
         }
@@ -73,96 +73,96 @@ public:
     SOCKET nativefd() const         { return m_sockfd; }
 
     // make bind address reusable
-    int set_addr_reusable( bool reusable = true )
+    int set_addr_reusable(bool reusable = true)
     {
         int reuse = reusable;
-        return this->set_option( SOL_SOCKET, SO_REUSEADDR, &reuse, ssizeof(reuse) );
+        return this->set_option(SOL_SOCKET, SO_REUSEADDR, &reuse, ssizeof(reuse));
     }
 
     // bind local address
-    int bind( const SocketAddr& addr )
+    int bind(const SocketAddr& addr)
     {
-        int res = ::bind( m_sockfd, addr.data(), addr.length() );
+        int res = ::bind(m_sockfd, addr.data(), addr.length());
         return res == 0 ? 0 : socket_last_err();
     }
-    int bind( const sockaddr* addr, socklen_t len )
+    int bind(const sockaddr* addr, socklen_t len)
     {
-        int res = ::bind( m_sockfd, addr, len );
+        int res = ::bind(m_sockfd, addr, len);
         return res == 0 ? 0 : socket_last_err();
     }
-    int bind( const char* ip, uint16_t port )
+    int bind(const char* ip, uint16_t port)
     {
-        SocketAddr saddr( ip, port );
-        return this->bind( saddr );
+        SocketAddr saddr(ip, port);
+        return this->bind(saddr);
     }
-    
+
     // get local address of the socket(if binded)
-    int get_local_addr( SocketAddr* paddr ) const
+    int get_local_addr(SocketAddr* paddr) const
     {
         socklen_t len = paddr->maxlen();
-        int res = ::getsockname( m_sockfd, paddr->data(), &len );
+        int res = ::getsockname(m_sockfd, paddr->data(), &len);
         return res == 0 ? 0 : socket_last_err();
     }
     // get peer address of the socket(if connected)
-    int get_peer_addr( SocketAddr* paddr ) const
+    int get_peer_addr(SocketAddr* paddr) const
     {
         socklen_t len = paddr->maxlen();
-        int res = ::getpeername( m_sockfd, paddr->data(), &len );
+        int res = ::getpeername(m_sockfd, paddr->data(), &len);
         return res == 0 ? 0 : socket_last_err();
     }
 
     // get socket option
-    int get_option( int level, int name, void* value, socklen_t* length ) const
+    int get_option(int level, int name, void* value, socklen_t* length) const
     {
-        int res = ::getsockopt( m_sockfd, level, name, (char*)value, length );
+        int res = ::getsockopt(m_sockfd, level, name, (char*)value, length);
         return res == 0 ? 0 : socket_last_err();
     }
     // set socket option
-    int set_option( int level, int name, const void* value, socklen_t length ) const
+    int set_option(int level, int name, const void* value, socklen_t length) const
     {
-        int res = ::setsockopt( m_sockfd, level, name, (const char*)value, length );
+        int res = ::setsockopt(m_sockfd, level, name, (const char*)value, length);
         return res == 0 ? 0 : socket_last_err();
     }
 
     // set recv/send buffer size
-    int set_recv_buff_size( int size ) const
+    int set_recv_buff_size(int size) const
     {
-        return this->set_option( SOL_SOCKET, SO_RCVBUF, &size, ssizeof(int) );
+        return this->set_option(SOL_SOCKET, SO_RCVBUF, &size, ssizeof(int));
     }
-    int set_send_buff_size( int size ) const
+    int set_send_buff_size(int size) const
     {
-        return this->set_option( SOL_SOCKET, SO_SNDBUF, &size, ssizeof(int) );
+        return this->set_option(SOL_SOCKET, SO_SNDBUF, &size, ssizeof(int));
     }
 
     // get recv/send buffer size
-    int get_recv_buff_size( int* psize ) const
+    int get_recv_buff_size(int* psize) const
     {
         socklen_t len = ssizeof(int);
-        return this->get_option( SOL_SOCKET, SO_RCVBUF, psize, &len );
+        return this->get_option(SOL_SOCKET, SO_RCVBUF, psize, &len);
     }
-    int get_send_buff_size( int* psize ) const
+    int get_send_buff_size(int* psize) const
     {
         socklen_t len = ssizeof(int);
-        return this->get_option( SOL_SOCKET, SO_SNDBUF, psize, &len );
+        return this->get_option(SOL_SOCKET, SO_SNDBUF, psize, &len);
     }
 
-    BaseSocket( BaseSocket&& other ) noexcept
+    BaseSocket(BaseSocket&& other) noexcept
     {
         m_sockfd = other.m_sockfd;
         other.m_sockfd = INVALID_SOCKET;
     }
-    BaseSocket& operator=( BaseSocket&& other ) noexcept
+    BaseSocket& operator=(BaseSocket&& other) noexcept
     {
-        if( &other != this )
+        if (&other != this)
         {
-            if( m_sockfd != INVALID_SOCKET )
-                ::closesocket( m_sockfd );
+            if (m_sockfd != INVALID_SOCKET)
+                ::closesocket(m_sockfd);
             m_sockfd = other.m_sockfd;
             other.m_sockfd = INVALID_SOCKET;
         }
         return *this;
     }
-    void swap( BaseSocket& other ) noexcept
+    void swap(BaseSocket& other) noexcept
     {
         auto tmp = m_sockfd;
         m_sockfd = other.m_sockfd;
@@ -170,10 +170,10 @@ public:
     }
 
 protected:
-    BaseSocket( const BaseSocket& ) = delete;
-    BaseSocket& operator=( const BaseSocket& ) = delete;
-    BaseSocket() : m_sockfd( INVALID_SOCKET ) {}
-    BaseSocket( SOCKET fd ) : m_sockfd(fd) {}
+    BaseSocket(const BaseSocket&) = delete;
+    BaseSocket& operator=(const BaseSocket&) = delete;
+    BaseSocket() : m_sockfd(INVALID_SOCKET) {}
+    BaseSocket(SOCKET fd) : m_sockfd(fd) {}
     ~BaseSocket() { this->close(); }
     SOCKET  m_sockfd;
 };
@@ -185,36 +185,36 @@ class UdpSocket : public BaseSocket
 {
 public:
     UdpSocket() = default;
-    explicit UdpSocket( SOCKET fd ) : BaseSocket(fd) {}
-    
+    explicit UdpSocket(SOCKET fd) : BaseSocket(fd) {}
+
     // open a udp socket, return 0 if succeeded, return system error code if failed
-    int open( int family = PF_INET )
+    int open(int family = PF_INET)
     {
-        return BaseSocket::open( family, SOCK_DGRAM, IPPROTO_UDP );
+        return BaseSocket::open(family, SOCK_DGRAM, IPPROTO_UDP);
     }
 
     // send data to the specified address
-    SockResult sendto( const SocketAddr& addr, const void* buf, size_t size, int& result, int flags=0 )
+    SockResult sendto(const SocketAddr& addr, const void* buf, size_t size, int& result, int flags = 0)
     {
-        result = (int)::sendto( m_sockfd, (const char*)buf, (int)size, flags, addr.data(), addr.length() );
+        result = (int)::sendto(m_sockfd, (const char*)buf, (int)size, flags, addr.data(), addr.length());
         return result < 0 ? SockResult::make_failed() : SockResult::make_ok();
     }
 
     // recv data
-    SockResult recvfrom( SocketAddr& addr, void* buf, size_t size, int& result, int flags=0 )
+    SockResult recvfrom(SocketAddr& addr, void* buf, size_t size, int& result, int flags = 0)
     {
         socklen_t len = addr.maxlen();
-        result = (int)::recvfrom( m_sockfd, (char*)buf, (int)size, flags, addr.data(), &len );
+        result = (int)::recvfrom(m_sockfd, (char*)buf, (int)size, flags, addr.data(), &len);
         return result < 0 ? SockResult::make_failed() : SockResult::make_ok();
     }
 
     // ditto, but wait at most the specified time(in milliseconds)
-    SockResult sendto_wait( const SocketAddr& addr, const void* buf, size_t size, int& result,
-                                int timeout, int flags=0 );
+    SockResult sendto_wait(const SocketAddr& addr, const void* buf, size_t size, int& result,
+        int timeout, int flags = 0);
 
     // ditto, but wait at most the specified time(in milliseconds)
-    SockResult recvfrom_wait( SocketAddr& addr, void* buf, size_t size, int& result,
-                                int timeout, int flags=0 );
+    SockResult recvfrom_wait(SocketAddr& addr, void* buf, size_t size, int& result,
+        int timeout, int flags = 0);
 };
 
 // multicast socket
@@ -224,68 +224,68 @@ public:
     McastSocket() : UdpSocket(), m_family(PF_INET) {}
 
     // open a multicast socket, no need to be called befor join
-    int open( int family = PF_INET )
+    int open(int family = PF_INET)
     {
-        assert( family == PF_INET || family == PF_INET6 );
+        assert(family == PF_INET || family == PF_INET6);
         m_family = family;
-        return BaseSocket::open( family, SOCK_DGRAM, IPPROTO_UDP );
+        return BaseSocket::open(family, SOCK_DGRAM, IPPROTO_UDP);
     }
 
     // join multicast group
     // port: port for the mcast data
     // ifidx: the index of local interface on which the multicast group should be joined
     // return 0 if succeeded, return system error code if failed
-    int join( const IpAddr& grpIP, uint16_t port, int ifidx = 0 );
-    int join( const char* grpIP, uint16_t port, int ifidx = 0 )
+    int join(const IpAddr& grpIP, uint16_t port, int ifidx = 0);
+    int join(const char* grpIP, uint16_t port, int ifidx = 0)
     {
         IpAddr groupIP(grpIP);
-        return this->join( groupIP, port, ifidx );
+        return this->join(groupIP, port, ifidx);
     }
 
     // leave multicast group
-    int leave( const IpAddr& grpIP, int ifidx = 0 );
-    int leave( const char* grpIP, int ifidx = 0 )
+    int leave(const IpAddr& grpIP, int ifidx = 0);
+    int leave(const char* grpIP, int ifidx = 0)
     {
         IpAddr groupIP(grpIP);
-        return this->leave( groupIP, ifidx );
+        return this->leave(groupIP, ifidx);
     }
 
     // ditto, but with source filter
-    int join( const IpAddr& grpIP, const IpAddr& srcIP, uint16_t port, int ifidx = 0 );
-    int join( const char* grpIP, const char* srcIP, uint16_t port, int ifidx = 0 )
+    int join(const IpAddr& grpIP, const IpAddr& srcIP, uint16_t port, int ifidx = 0);
+    int join(const char* grpIP, const char* srcIP, uint16_t port, int ifidx = 0)
     {
         IpAddr groupIP(grpIP), sourceIP(srcIP);
-        return this->join( groupIP, sourceIP, port, ifidx );
+        return this->join(groupIP, sourceIP, port, ifidx);
     }
-    int leave( const IpAddr& grpIP, const IpAddr& srcIP, int ifidx = 0 );
-    int leave( const char* grpIP, const char* srcIP, int ifidx = 0 )
+    int leave(const IpAddr& grpIP, const IpAddr& srcIP, int ifidx = 0);
+    int leave(const char* grpIP, const char* srcIP, int ifidx = 0)
     {
         IpAddr groupIP(grpIP), sourceIP(srcIP);
-        return this->leave( groupIP, sourceIP, ifidx );
+        return this->leave(groupIP, sourceIP, ifidx);
     }
 
     // block/unblock source
-    int block( const IpAddr& grpIP, const IpAddr& srcIP, int ifidx = 0 );
-    int block( const char* grpIP, const char* srcIP, int ifidx = 0 )
+    int block(const IpAddr& grpIP, const IpAddr& srcIP, int ifidx = 0);
+    int block(const char* grpIP, const char* srcIP, int ifidx = 0)
     {
         IpAddr groupIP(grpIP), sourceIP(srcIP);
-        return this->block( groupIP, sourceIP, ifidx );
+        return this->block(groupIP, sourceIP, ifidx);
     }
-    int unblock( const IpAddr& grpIP, const IpAddr& srcIP, int ifidx = 0 );
-    int unblock( const char* grpIP, const char* srcIP, int ifidx = 0 )
+    int unblock(const IpAddr& grpIP, const IpAddr& srcIP, int ifidx = 0);
+    int unblock(const char* grpIP, const char* srcIP, int ifidx = 0)
     {
         IpAddr groupIP(grpIP), sourceIP(srcIP);
-        return this->unblock( groupIP, sourceIP, ifidx );
+        return this->unblock(groupIP, sourceIP, ifidx);
     }
 
     // enable/disable loopback of outgoing mcast data
-    int set_loopback( bool enabled );
+    int set_loopback(bool enabled);
 
     // set TTL of outgoing mcast data
-    int set_mcast_ttl( uint32_t ttl );
+    int set_mcast_ttl(uint32_t ttl);
 
     // choose interface for outgoing mcast data
-    int set_interface( uint32_t ifidx );
+    int set_interface(uint32_t ifidx);
 private:
     int m_family;
 };
@@ -297,41 +297,41 @@ class TcpSocket : public BaseSocket
 {
 public:
     TcpSocket() = default;
-    explicit TcpSocket( SOCKET fd ) : BaseSocket(fd) {}
+    explicit TcpSocket(SOCKET fd) : BaseSocket(fd) {}
 
     // open a tcp client socket, no need to be called before connecting
-    int open( int family = PF_INET )
+    int open(int family = PF_INET)
     {
-        return BaseSocket::open( family, SOCK_STREAM, IPPROTO_TCP );
+        return BaseSocket::open(family, SOCK_STREAM, IPPROTO_TCP);
     }
 
     // connect to server
-    int connect( const SocketAddr& addr )
+    int connect(const SocketAddr& addr)
     {
-        if( m_sockfd == INVALID_SOCKET )
+        if (m_sockfd == INVALID_SOCKET)
         {
-            int res = this->open( addr.family() );
-            if( res )
+            int res = this->open(addr.family());
+            if (res)
                 return res;
         }
-        int res = ::connect( m_sockfd, addr.data(), addr.length() );
+        int res = ::connect(m_sockfd, addr.data(), addr.length());
         return res == 0 ? 0 : socket_last_err();
     }
-    int connect( const sockaddr* addr, socklen_t len )
+    int connect(const sockaddr* addr, socklen_t len)
     {
-        if( m_sockfd == INVALID_SOCKET )
+        if (m_sockfd == INVALID_SOCKET)
         {
-            int res = this->open( addr->sa_family );
-            if( res )
+            int res = this->open(addr->sa_family);
+            if (res)
                 return res;
         }
-        int res = ::connect( m_sockfd, addr, len );
+        int res = ::connect(m_sockfd, addr, len);
         return res == 0 ? 0 : socket_last_err();
     }
-    int connect( const char* srvIP, uint16_t port )
+    int connect(const char* srvIP, uint16_t port)
     {
-        SocketAddr srvAddr( srvIP, port );
-        return this->connect( srvAddr );
+        SocketAddr srvAddr(srvIP, port);
+        return this->connect(srvAddr);
     }
 
     // is already connected
@@ -339,45 +339,45 @@ public:
     {
         struct sockaddr_storage tmp;
         socklen_t len = ssizeof(tmp);
-        return (0 == ::getpeername( m_sockfd, (sockaddr*)&tmp, &len ));
+        return (0 == ::getpeername(m_sockfd, (sockaddr*)&tmp, &len));
     }
 
     // shutdown connected socket
-    int shutdown( int how = SHUT_RDWR )
+    int shutdown(int how = SHUT_RDWR)
     {
-        int res = ::shutdown( m_sockfd, how );
+        int res = ::shutdown(m_sockfd, how);
         return res == 0 ? 0 : socket_last_err();
     }
 
     // send some data, may return before all data sent
-    SockResult send( const void* buf, size_t size, int& result, int flags=0 )
+    SockResult send(const void* buf, size_t size, int& result, int flags = 0)
     {
-        result = (int)::send( m_sockfd, (const char*)buf, (int)size, flags );
+        result = (int)::send(m_sockfd, (const char*)buf, (int)size, flags);
         return result < 0 ? SockResult::make_failed() : SockResult::make_ok();
     }
 
     // recv some data, may return before all data received
-    SockResult recv( void* buf, size_t size, int& result, int flags=0 )
+    SockResult recv(void* buf, size_t size, int& result, int flags = 0)
     {
-        result = (int)::recv( m_sockfd, (char*)buf, (int)size, flags );
+        result = (int)::recv(m_sockfd, (char*)buf, (int)size, flags);
         return result < 0 ? SockResult::make_failed() : SockResult::make_ok();
     }
 
     // ditto, but wait at most the specified time(in milliseconds)
-    SockResult send_wait( const void* buf, size_t size, int& result, int timeout, int flags=0 );
+    SockResult send_wait(const void* buf, size_t size, int& result, int timeout, int flags = 0);
 
     // ditto, but wait at most the specified time(in milliseconds)
-    SockResult recv_wait( void* buf, size_t size, int& result, int timeout, int flags=0 );
+    SockResult recv_wait(void* buf, size_t size, int& result, int timeout, int flags = 0);
 
     // repeatedly send data until all data are sent
     // return the total number of bytes sent
     // return system error code if failed
-    SockResult sendall( const void* buf, size_t size, int& result, int flags=0 );
-    
+    SockResult sendall(const void* buf, size_t size, int& result, int flags = 0);
+
     // repeatedly receive data until all data are received
     // return the total number of bytes received
     // return system error code if failed
-    SockResult recvall( void* buf, size_t size, int& result, int flags=0 );
+    SockResult recvall(void* buf, size_t size, int& result, int flags = 0);
 };
 
 // TCP acceptor
@@ -385,32 +385,32 @@ class TcpAcceptor : public BaseSocket
 {
 public:
     // open a tcp acceptor socket, no need to be called before listenning
-    int open( int family = PF_INET )
+    int open(int family = PF_INET)
     {
-        return BaseSocket::open( family, SOCK_STREAM, IPPROTO_TCP );
+        return BaseSocket::open(family, SOCK_STREAM, IPPROTO_TCP);
     }
 
     // listen at the specified address
     // return 0 if succeeded, return system error code if failed
-    int listen_at( const sockaddr* srvAddr, socklen_t len, int backlog = 10 );
-    int listen_at( const SocketAddr& srvAddr, int backlog = 10 )
+    int listen_at(const sockaddr* srvAddr, socklen_t len, int backlog = 10);
+    int listen_at(const SocketAddr& srvAddr, int backlog = 10)
     {
-        return this->listen_at( srvAddr.data(), srvAddr.length(), backlog );
+        return this->listen_at(srvAddr.data(), srvAddr.length(), backlog);
     }
-    int listen_at( const char* srvIP, uint16_t port, int backlog = 10 )
+    int listen_at(const char* srvIP, uint16_t port, int backlog = 10)
     {
-        SocketAddr srvAddr( srvIP, port );
-        return this->listen_at( srvAddr, backlog );
+        SocketAddr srvAddr(srvIP, port);
+        return this->listen_at(srvAddr, backlog);
     }
 
     // accept an incomming connection
     // return new connection socket, if failed return invalid socket
-    TcpSocket accept( int* errc = nullptr )
+    TcpSocket accept(int* errc = nullptr)
     {
-        SOCKET sockfd = ::accept( m_sockfd, nullptr, nullptr );   
-        if( errc )
+        SOCKET sockfd = ::accept(m_sockfd, nullptr, nullptr);
+        if (errc)
             *errc = (sockfd != INVALID_SOCKET) ? 0 : socket_last_err();
-        return TcpSocket{ sockfd };
+        return TcpSocket{sockfd};
     }
 };
 
